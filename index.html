@@ -105,6 +105,11 @@ details.tea.sup .tea-body .caution b{color:var(--roselle)}
 .triggers{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
 .trig{font-size:13px;padding:7px 13px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);cursor:pointer;font-family:inherit}
 .trig.on{background:var(--roselle);border-color:var(--roselle);color:#fff;font-weight:600}
+.tri-row{display:flex;align-items:center;gap:8px;margin-top:6px}
+.tri-lab{flex:0 0 34px;font-size:12px;color:var(--ink-soft);text-align:right}
+.tri-lab.hot{color:var(--roselle);font-weight:700}
+.tri-row .scale{flex:1;margin-top:0}
+.tri-row .scale button{padding:8px 0;font-size:13px}
 textarea{
   width:100%;margin-top:6px;padding:10px 12px;font-size:15px;font-family:inherit;
   border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);
@@ -244,32 +249,37 @@ nav button.on{color:var(--deep);background:var(--moss-soft);font-weight:600}
 <div class="page" id="page-log">
   <div class="section-title">今天的身體</div>
   <div class="card">
-    <div class="log-label"><b>臉部出油 · 早</b>　起床～中午的狀態</div>
-    <div class="scale sun" id="sc-oilAM"></div>
-    <div class="log-label"><b>臉部出油 · 晚</b>　下午～睡前的高峰</div>
-    <div class="scale sun" id="sc-oilPM"></div>
+    <div class="log-label"><b>臉部出油</b>　1 清爽 → 5 整臉泛油</div>
+    <div class="tri-row"><div class="tri-lab">早</div><div class="scale sun" id="sc-oilAM"></div></div>
+    <div class="tri-row"><div class="tri-lab hot">午後</div><div class="scale sun" id="sc-oilMID"></div></div>
+    <div class="tri-row"><div class="tri-lab">晚</div><div class="scale sun" id="sc-oilPM"></div></div>
 
-    <div class="log-label"><b>粉刺 · 早</b>　起床時的狀態</div>
-    <div class="scale warm" id="sc-acneAM"></div>
-    <div class="log-label"><b>粉刺 · 晚</b>　睡前，看今天有沒有新冒</div>
-    <div class="scale warm" id="sc-acnePM"></div>
+    <div class="log-label"><b>粉刺</b>　1 乾淨 → 5 大爆發　<span style="color:var(--roselle)">午後是你的爆發窗口</span></div>
+    <div class="tri-row"><div class="tri-lab">早</div><div class="scale warm" id="sc-acneAM"></div></div>
+    <div class="tri-row"><div class="tri-lab hot">午後</div><div class="scale warm" id="sc-acneMID"></div></div>
+    <div class="tri-row"><div class="tri-lab">晚</div><div class="scale warm" id="sc-acnePM"></div></div>
 
     <div class="log-label"><b>下午精神</b>　1 撐不住 → 5 很清醒</div>
     <div class="scale" id="sc-pm"></div>
 
-    <div class="log-label"><b>今天踩雷了嗎</b>　點一下記下當天誘因（可複選）</div>
+    <div class="log-label"><b>今天踩雷了嗎</b>　可複選。<span style="color:var(--ink-soft)">茶單裡勾的含咖啡因茶會自動算，這裡只記計畫外的。</span></div>
     <div class="triggers" id="trigList"></div>
 
-    <div class="log-label"><b>備註</b>　吃了什麼、睡多久、其他</div>
-    <textarea id="logNote" placeholder="例：下午奶茶一杯、睡 5 小時、下巴新冒兩顆"></textarea>
+    <div class="log-label"><b>備註</b>　吃了什麼、睡多久、身體訊號</div>
+    <textarea id="logNote" placeholder="例：午餐 JJ 夏威夷飯、無糖金萱綠茶 14:00、心悸感明顯、睡 6 小時"></textarea>
     <button class="primary" id="logSave" style="margin-top:12px">儲存今天</button>
     <div class="saved-msg" id="logMsg"></div>
   </div>
 
   <div class="section-title">近 14 天</div>
+  <div class="note-card" style="border-style:solid;background:var(--moss-soft);border-color:#cfdcc4;color:var(--deep)">
+    <b>為什麼盯「午後爆發幅度」（早 → 午後的差）</b><br>
+    一顆粉刺從微粉刺長到看得見要<b>數週</b>，不可能在 4 小時內冒出來。所以你午後看到的變化，是<b>既有病灶被皮脂與發炎點燃</b>，不是新粉刺誕生。<br><br>
+    這代表：真正的飲食元凶<b>可能是前幾天吃的</b>。所以下面除了比對當天誘因，也會自動比對<b>前 1–2 天</b>的。
+  </div>
   <div id="insightBox"></div>
   <div class="card"><div class="hist" id="histList"></div></div>
-  <button class="ghost" id="exportBtn">匯出全部記錄（文字）</button>
+  <button class="ghost" id="exportBtn">匯出全部記錄（CSV 檔）</button>
 </div>
 
 <!-- ===== 提醒 ===== -->
@@ -685,8 +695,19 @@ function toggleItem(key,id,el){
 }
 
 /* ============ 記錄 ============ */
-const SCALES=[["sc-oilAM","oilAM"],["sc-oilPM","oilPM"],["sc-acneAM","acneAM"],["sc-acnePM","acnePM"],["sc-pm","pm"]];
-const TRIGGERS=[["dairy","乳製品"],["sugar","高糖／血糖突波"],["sleep","睡不足"],["stress","壓力大"],["fried","炸物油膩"],["period","經前"]];
+const SCALES=[["sc-oilAM","oilAM"],["sc-oilMID","oilMID"],["sc-oilPM","oilPM"],
+              ["sc-acneAM","acneAM"],["sc-acneMID","acneMID"],["sc-acnePM","acnePM"],["sc-pm","pm"]];
+const TRIGGERS=[["dairy","乳製品"],["sugar","高糖"],["caffx","計畫外咖啡因"],["sleep","睡不足"],["stress","壓力大"],["fried","炸物油膩"]];
+
+/* 從勾記的茶單自動算出當天喝了幾杯含咖啡因的茶（chips 含「咖啡因」） */
+function caffeineCups(rec){
+  if(!rec||!rec.phase||!rec.teas) return 0;
+  const P=PHASES[rec.phase]; if(!P) return 0;
+  const caff=new Set(P.slots.filter(s=>s.chips.includes("咖啡因")).map(s=>s.id));
+  let n=rec.teas.filter(id=>caff.has(id)).length;
+  if((rec.trig||[]).includes("caffx")) n+=1;   // 計畫外的也算一杯
+  return n;
+}
 function buildScales(){
   SCALES.forEach(([elId,key])=>{
     const el=document.getElementById(elId);
@@ -749,17 +770,19 @@ function renderHistory(){
   list.innerHTML=rows.map(r=>{
     const hex=PHASES[r.phase]?.hex||"#DEDACB";
     const bar=(v,c)=>`<div class="bar-track"><div class="bar-fill" style="width:${(v||0)/5*100}%;background:${c}"></div></div>`;
-    // 相容舊資料：舊的 oil/acne 當作 PM 值
-    const oilPM=r.oilPM ?? r.oil, acneAM=r.acneAM, acnePM=r.acnePM ?? r.acne;
-    const worsen=(acneAM&&acnePM)? acnePM-acneAM : null;
-    const trigDot=(r.trig&&r.trig.length)? `<span title="有誘因" style="color:var(--roselle)">●</span>` : "";
-    const worsenTag = worsen>0 ? `<span style="color:var(--roselle);font-weight:600">↑${worsen}</span>` : (worsen===0?`<span style="color:var(--ink-soft)">–</span>`:"");
+    const oM=oilMid(r), aAM=r.acneAM, aMID=acneMid(r);
+    const sp=spike(r);
+    const trigDot=(r.trig&&r.trig.length)? `<span style="color:var(--roselle)">●</span>` : "";
+    const caf=caffeineCups(r);
+    const cafDot=caf? `<span style="color:var(--gold)">☕${caf}</span>` : "";
+    const spikeTag = sp>0 ? `<span style="color:var(--roselle);font-weight:700">↑${sp}</span>`
+                   : (sp===0?`<span style="color:var(--ink-soft)">–</span>`:"");
     return `<div class="hist-row">
-      <div class="hist-date">${r.d.getMonth()+1}/${r.d.getDate()} ${trigDot}</div>
+      <div class="hist-date">${r.d.getMonth()+1}/${r.d.getDate()}<br>${trigDot}${cafDot}</div>
       <div class="hist-dot" style="background:${hex}"></div>
       <div class="bars">
-        <div class="bar-item"><span>油晚 ${oilPM||"–"}</span>${bar(oilPM,"#B98A2F")}</div>
-        <div class="bar-item"><span>刺 ${acneAM||"–"}→${acnePM||"–"} ${worsenTag}</span>${bar(acnePM,"#A83E52")}</div>
+        <div class="bar-item"><span>油午 ${oM||"–"}</span>${bar(oM,"#B98A2F")}</div>
+        <div class="bar-item"><span>刺 ${aAM||"–"}→${aMID||"–"} ${spikeTag}</span>${bar(aMID,"#A83E52")}</div>
         <div class="bar-item"><span>神 ${r.pm||"–"}</span>${bar(r.pm,"#3E5C4E")}</div>
       </div>
       <div class="tea-count">${(r.teas||[]).length}杯<br><span style="color:var(--gold)">${(r.sups||[]).length}品</span></div>
@@ -768,53 +791,94 @@ function renderHistory(){
   renderInsight(rows);
 }
 function avg(a){return a.length? a.reduce((x,y)=>x+y,0)/a.length : null}
-// 取當日粉刺「日內惡化幅度」（晚-早），相容舊資料
-function acneWorsen(r){
-  if(r.acneAM!=null && r.acnePM!=null) return r.acnePM-r.acneAM;
-  return null;
+
+/* 核心指標：午後爆發幅度 = 粉刺午後 − 粉刺早
+   （新粉刺不可能 4 小時長出來，這個差值抓的是「既有病灶被點燃」的幅度） */
+function acneMid(r){ return r.acneMID ?? r.acnePM ?? r.acne }
+function oilMid(r){ return r.oilMID ?? r.oilPM ?? r.oil }
+function spike(r){
+  const a=r.acneAM, b=acneMid(r);
+  return (a!=null && b!=null) ? b-a : null;
 }
-function acneEnd(r){ return r.acnePM ?? r.acne }
+
 function renderInsight(rows){
   const box=document.getElementById("insightBox");
   const bits=[];
+  const withS=rows.filter(r=>spike(r)!==null);
 
-  // ① 誘因 vs 日內惡化 —— 這是你最想知道的
-  const withW=rows.filter(r=>acneWorsen(r)!==null);
-  if(withW.length>=6){
-    const hit=withW.filter(r=>r.trig&&r.trig.length);
-    const clean=withW.filter(r=>!r.trig||!r.trig.length);
-    if(hit.length>=3&&clean.length>=3){
-      const a=avg(hit.map(acneWorsen)), b=avg(clean.map(acneWorsen));
-      const dv=(a-b).toFixed(1);
-      bits.push(a>b+0.3
-        ? `有踩雷的日子，粉刺從早到晚平均惡化 <b>${a.toFixed(1)} 分</b>；沒踩雷只 <b>${b.toFixed(1)} 分</b>。差 ${dv} 分 — 你的直覺被資料支持了，下午爆發跟當天誘因有關。`
-        : `有踩雷與沒踩雷的日內惡化差不多（${a.toFixed(1)} vs ${b.toFixed(1)}）。或許不是單一食物，看看是不是睡眠或經期階段更關鍵。`);
-    }
-    // 找出最常伴隨爆發的那個誘因
-    const bad=withW.filter(r=>acneWorsen(r)>=2 && r.trig&&r.trig.length);
-    if(bad.length>=3){
-      const cnt={};
-      bad.forEach(r=>r.trig.forEach(t=>cnt[t]=(cnt[t]||0)+1));
-      const top=Object.entries(cnt).sort((x,y)=>y[1]-x[1])[0];
-      const label=(TRIGGERS.find(t=>t[0]===top[0])||[,top[0]])[1];
-      bits.push(`大爆發（早晚惡化 ≥2 分）的日子裡，最常一起出現的是「<b>${label}</b>」。`);
+  // ① 咖啡因 vs 午後爆發 —— 你想驗證的假說
+  if(withS.length>=6){
+    const caf=withS.filter(r=>caffeineCups(r)>=1);
+    const nocaf=withS.filter(r=>caffeineCups(r)===0);
+    if(caf.length>=3 && nocaf.length>=3){
+      const a=avg(caf.map(spike)), b=avg(nocaf.map(spike));
+      const oa=avg(caf.map(oilMid).filter(Boolean)), ob=avg(nocaf.map(oilMid).filter(Boolean));
+      const oilLine=(oa!==null&&ob!==null)? `　午後出油 <b>${oa.toFixed(1)}</b> vs <b>${ob.toFixed(1)}</b>。` : "";
+      bits.push(a>b+0.5
+        ? `☕ <b>有喝咖啡因</b>的日子，午後粉刺平均爆 <b>${a.toFixed(1)} 分</b>；沒喝的只 <b>${b.toFixed(1)} 分</b>。${oilLine}你的懷疑目前站得住腳 — 但這是相關、不是因果，想確認就挑一週完全停掉含咖啡因的茶試試。`
+        : `☕ 有喝咖啡因（${a.toFixed(1)}）與沒喝（${b.toFixed(1)}）的午後爆發幅度差不多。${oilLine}目前資料還看不出咖啡因是元凶。`);
     }
   }
 
-  // ② 週期階段
-  const acne=rows.filter(r=>acneEnd(r));
+  // ② 當天誘因 vs 午後爆發
+  if(withS.length>=6){
+    const hit=withS.filter(r=>r.trig&&r.trig.length);
+    const clean=withS.filter(r=>!r.trig||!r.trig.length);
+    if(hit.length>=3&&clean.length>=3){
+      const a=avg(hit.map(spike)), b=avg(clean.map(spike));
+      bits.push(a>b+0.3
+        ? `<b>當天</b>有踩雷，午後平均爆 <b>${a.toFixed(1)} 分</b>；沒踩雷 <b>${b.toFixed(1)} 分</b>。`
+        : `當天有無踩雷，午後爆發幅度差不多（${a.toFixed(1)} vs ${b.toFixed(1)}）— 別急著否定食物，往下看延遲比對。`);
+    }
+  }
+
+  // ③ 延遲比對：今天的爆發 vs 前 1~2 天的誘因（粉刺形成需要時間，元凶常是前幾天的）
+  const all=ST.get("teaLog",{});
+  const lagged=[];
+  withS.forEach(r=>{
+    const d=new Date(r.k+"T00:00:00");
+    const prev=[];
+    for(let i=1;i<=2;i++){
+      const p=new Date(d); p.setDate(p.getDate()-i);
+      const pk=`${p.getFullYear()}-${String(p.getMonth()+1).padStart(2,"0")}-${String(p.getDate()).padStart(2,"0")}`;
+      if(all[pk]) prev.push(all[pk]);
+    }
+    if(prev.length) lagged.push({spike:spike(r), prevTrig:prev.some(p=>(p.trig||[]).length>0)});
+  });
+  if(lagged.length>=6){
+    const yes=lagged.filter(x=>x.prevTrig), no=lagged.filter(x=>!x.prevTrig);
+    if(yes.length>=3&&no.length>=3){
+      const a=avg(yes.map(x=>x.spike)), b=avg(no.map(x=>x.spike));
+      bits.push(a>b+0.3
+        ? `⏱ <b>前 1–2 天</b>踩過雷的話，今天午後平均爆 <b>${a.toFixed(1)} 分</b>；前幾天乾淨則只 <b>${b.toFixed(1)} 分</b>。<b>延遲效應成立</b> — 元凶可能是前幾天吃的，不是當天午餐。`
+        : `前 1–2 天有無踩雷，對今天午後爆發影響不大（${a.toFixed(1)} vs ${b.toFixed(1)}）。`);
+    }
+  }
+
+  // ④ 大爆發日最常伴隨的誘因
+  const bad=withS.filter(r=>spike(r)>=2 && r.trig && r.trig.length);
+  if(bad.length>=3){
+    const cnt={};
+    bad.forEach(r=>r.trig.forEach(t=>cnt[t]=(cnt[t]||0)+1));
+    const top=Object.entries(cnt).sort((x,y)=>y[1]-x[1])[0];
+    const label=(TRIGGERS.find(t=>t[0]===top[0])||[,top[0]])[1];
+    bits.push(`大爆發（午後 ≥2 分）的日子裡，最常一起出現的是「<b>${label}</b>」。`);
+  }
+
+  // ⑤ 週期階段
+  const acne=rows.filter(r=>acneMid(r));
   if(acne.length>=5){
-    const lut=avg(acne.filter(r=>r.phase==="luteal").map(acneEnd));
-    const fol=avg(acne.filter(r=>r.phase==="follicular").map(acneEnd));
+    const lut=avg(acne.filter(r=>r.phase==="luteal").map(acneMid));
+    const fol=avg(acne.filter(r=>r.phase==="follicular").map(acneMid));
     if(lut!==null&&fol!==null){
       const dv=(lut-fol).toFixed(1);
       bits.push(dv>0.5
-        ? `黃體期粉刺平均比濾泡期高 <b>${dv} 分</b> — 週期性爆痘的模式成立。`
-        : `黃體期與濾泡期粉刺差距不大（${dv} 分），你的爆發可能更受飲食誘因影響。`);
+        ? `黃體期午後粉刺平均比濾泡期高 <b>${dv} 分</b> — 週期性的模式成立。`
+        : `黃體期與濾泡期差距不大（${dv} 分），你的爆發可能更受飲食或咖啡因影響。`);
     }
   }
 
-  // ③ 精神
+  // ⑥ 精神
   const pm=rows.filter(r=>r.pm);
   if(pm.length>=5){
     const p=avg(pm.map(r=>r.pm));
@@ -824,20 +888,56 @@ function renderInsight(rows){
     ? `<div class="insight">${bits.join("<br><br>")}<br><br><span style="opacity:.7;font-size:12px">這只是你自己資料的簡單平均，不是因果證據。累積兩三個週期後看趨勢比看單天有意義。</span></div>`
     : `<div class="note-card">再記幾天，這裡就會開始比較不同週期階段的膚況與精神差異。</div>`;
 }
-document.getElementById("exportBtn").addEventListener("click",()=>{
+function buildCSV(){
   const all=ST.get("teaLog",{});
   const keys=Object.keys(all).sort();
-  if(!keys.length){alert("目前沒有記錄。");return}
-  const txt="日期,週期日,階段,出油早,出油晚,粉刺早,粉刺晚,粉刺惡化,下午精神,誘因,茶杯數,補充品數,備註\n"+keys.map(k=>{
+  if(!keys.length) return null;
+  // 每個欄位都用引號包起來，備註裡的逗號、換行才不會把欄位撐爆
+  const q=v=>`"${String(v??"").replace(/"/g,'""').replace(/\r?\n/g," ")}"`;
+  const head=["日期","週期日","階段","出油早","出油午後","出油晚","粉刺早","粉刺午後","粉刺晚","午後爆發幅度","咖啡因杯數","下午精神","誘因","茶杯數","補充品數","備註"];
+  const lines=keys.map(k=>{
     const r=all[k];
-    const oAM=r.oilAM??"", oPM=r.oilPM??r.oil??"", aAM=r.acneAM??"", aPM=r.acnePM??r.acne??"";
-    const w=(r.acneAM!=null&&r.acnePM!=null)?(r.acnePM-r.acneAM):"";
+    const oAM=r.oilAM??"", oMID=r.oilMID??"", oPM=r.oilPM??r.oil??"";
+    const aAM=r.acneAM??"", aMID=r.acneMID??"", aPM=r.acnePM??r.acne??"";
+    const sp=spike(r); const spOut=(sp==null)?"":sp;
+    const caf=caffeineCups(r);
     const trig=(r.trig||[]).map(t=>(TRIGGERS.find(x=>x[0]===t)||[,t])[1]).join("、");
-    return [k,r.day||"",PHASES[r.phase]?.name||"",oAM,oPM,aAM,aPM,w,r.pm||"",trig,(r.teas||[]).length,(r.sups||[]).length,(r.note||"").replace(/,/g,"、")].join(",");
-  }).join("\n");
-  if(navigator.share){navigator.share({title:"週期茶曆記錄",text:txt}).catch(()=>{})}
-  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>alert("記錄已複製到剪貼簿"))}
-  else alert(txt);
+    return [k,r.day||"",PHASES[r.phase]?.name||"",oAM,oMID,oPM,aAM,aMID,aPM,spOut,caf,r.pm||"",trig,(r.teas||[]).length,(r.sups||[]).length,r.note||""].map(q).join(",");
+  });
+  // \uFEFF = BOM，沒有它 Excel 開中文會變亂碼
+  return "\uFEFF" + [head.map(q).join(","), ...lines].join("\r\n");
+}
+
+document.getElementById("exportBtn").addEventListener("click", async ()=>{
+  const csv=buildCSV();
+  if(!csv){alert("目前沒有記錄。");return}
+  const stamp=todayKey();
+  const fname=`週期茶曆_${stamp}.csv`;
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+
+  // ① 首選：分享成一個真正的檔案（iOS 可存進「檔案」、傳給自己、丟進 Excel）
+  try{
+    const file=new File([blob],fname,{type:"text/csv"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:"週期茶曆記錄"});
+      return;
+    }
+  }catch(e){ /* 使用者取消分享也會走到這，不當作錯誤 */ }
+
+  // ② 次選：直接下載
+  try{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    return;
+  }catch(e){}
+
+  // ③ 保底：複製到剪貼簿
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(csv).then(()=>alert("這台裝置不支援匯出檔案，記錄已複製到剪貼簿。"));
+  }
 });
 
 /* ============ 提醒 ============ */

@@ -2,7 +2,7 @@
    職責：① 離線可用（快取殼層）② 處理通知點擊
    改版時把 CACHE 的版本號 +1，舊快取會自動清掉。 */
 
-const CACHE = "chalendar-v4";
+const CACHE = "chalendar-v6";
 
 const SHELL = [
   "./",
