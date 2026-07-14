@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="週期茶曆">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F5F3EB">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png">
+<title>週期茶曆</title>
+<style>
+:root{
+  --paper:#F5F3EB; --card:#FDFCF7; --ink:#24382E; --ink-soft:#5C6E62;
+  --moss:#5E7D63; --moss-soft:#E7EDE0;
+  --roselle:#A83E52; --roselle-soft:#F5E3E6;
+  --gold:#B98A2F; --gold-soft:#F3EBD8;
+  --deep:#3E5C4E; --deep-soft:#DFE8E1;
+  --folli:#7BA05B; --folli-soft:#E9EFDD;
+  --sky:#4E7A8C; --sky-soft:#E2EDF1;
+  --line:#DEDACB; --radius:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:"PingFang TC","Noto Sans TC",-apple-system,sans-serif;
+  background:var(--paper); color:var(--ink); font-size:16px; line-height:1.6;
+  padding-bottom:calc(76px + env(safe-area-inset-bottom));
+}
+header{padding:calc(18px + env(safe-area-inset-top)) 20px 6px;display:flex;align-items:baseline;justify-content:space-between}
+header h1{font-family:"Songti TC","Noto Serif TC",serif;font-size:26px;font-weight:700;letter-spacing:.12em}
+header .date{font-size:13px;color:var(--ink-soft)}
+main{padding:8px 16px 24px;max-width:540px;margin:0 auto}
+.page{display:none}
+.page.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.page.active{animation:none}}
+
+/* 天氣條 */
+.weather{
+  background:var(--sky-soft); border-radius:var(--radius); padding:12px 14px; margin-bottom:14px;
+  display:flex; gap:14px; align-items:center;
+}
+.weather .wx-main{flex:0 0 auto;text-align:center;min-width:74px}
+.weather .wx-temp{font-family:"Songti TC",serif;font-size:26px;font-weight:700;color:var(--sky);line-height:1.1}
+.weather .wx-cond{font-size:11px;color:var(--ink-soft)}
+.weather .wx-side{flex:1;border-left:1px solid #c9dde5;padding-left:14px}
+.weather .wx-hum{font-size:13px;font-weight:600;color:var(--sky)}
+.weather .wx-tip{font-size:12.5px;color:var(--ink-soft);margin-top:2px;line-height:1.5}
+.weather.err{background:var(--gold-soft)}
+
+/* 週期環 */
+.ring-wrap{display:flex;flex-direction:column;align-items:center;padding:6px 0 4px}
+.ring-box{position:relative;width:230px;height:230px}
+.ring-box svg{width:100%;height:100%;display:block}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.ring-center .phase-name{font-family:"Songti TC",serif;font-size:27px;font-weight:700;letter-spacing:.14em}
+.ring-center .cycle-day{font-size:13px;color:var(--ink-soft);margin-top:2px}
+.legend{display:flex;gap:13px;margin-top:12px;flex-wrap:wrap;justify-content:center}
+.legend span{font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:5px}
+.legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+.section-title{font-family:"Songti TC",serif;font-size:15px;letter-spacing:.3em;color:var(--ink-soft);margin:22px 4px 10px;display:flex;align-items:center;gap:10px}
+.section-title::after{content:"";flex:1;height:1px;background:var(--line)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px}
+
+/* 今日茶單（可勾） */
+.slot{display:flex;gap:10px;align-items:flex-start}
+.tick{
+  flex:0 0 26px;height:26px;border:1.5px solid var(--line);border-radius:50%;
+  background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:transparent;margin-top:2px;transition:all .15s;
+}
+.tick.on{background:var(--moss);border-color:var(--moss);color:#fff}
+.slot-time{flex:0 0 58px;font-size:12px;color:var(--ink-soft);padding-top:4px;line-height:1.4}
+.slot-body{flex:1;border-left:1px solid var(--line);padding-left:12px}
+.slot-tea{font-weight:600;font-size:16px}
+.slot-tea small{font-weight:400;font-size:12px;color:var(--gold);margin-left:7px;letter-spacing:.02em}
+.slot-why{font-size:13px;color:var(--ink-soft);margin-top:3px}
+.sup-card{background:linear-gradient(90deg,var(--gold-soft) 0 3px,var(--card) 3px)}
+.sup-card .tick.on{background:var(--gold);border-color:var(--gold)}
+details.tea.sup{background:linear-gradient(90deg,var(--gold-soft) 0 3px,var(--card) 3px)}
+details.tea.sup .tea-body .row b{color:var(--gold)}
+details.tea.sup .tea-body .caution b{color:var(--roselle)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{font-size:11px;padding:2px 9px;border-radius:99px;background:var(--moss-soft);color:var(--deep)}
+.chip.warn{background:var(--roselle-soft);color:var(--roselle)}
+.chip.gold{background:var(--gold-soft);color:#8a6620}
+.note-card{border:1px dashed var(--line);border-radius:var(--radius);padding:12px 14px;font-size:13px;color:var(--ink-soft);margin-bottom:10px}
+.avoid{font-size:13px;color:var(--roselle)}
+
+/* 記錄頁 */
+.scale{display:flex;gap:6px;margin-top:6px}
+.scale button{
+  flex:1;padding:10px 0;font-size:14px;font-family:inherit;border:1px solid var(--line);
+  background:var(--card);color:var(--ink-soft);border-radius:10px;cursor:pointer;
+}
+.scale button.on{background:var(--deep);border-color:var(--deep);color:#fff;font-weight:600}
+.scale.warm button.on{background:var(--roselle);border-color:var(--roselle)}
+.scale.sun button.on{background:var(--gold);border-color:var(--gold)}
+.log-label{font-size:13px;color:var(--ink-soft);letter-spacing:.05em;margin-top:14px}
+.log-label:first-child{margin-top:0}
+.log-label b{color:var(--ink);font-weight:600}
+textarea{
+  width:100%;margin-top:6px;padding:10px 12px;font-size:15px;font-family:inherit;
+  border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);
+  resize:vertical;min-height:64px;
+}
+textarea:focus{outline:2px solid var(--moss);outline-offset:1px}
+.hist{display:flex;flex-direction:column;gap:0}
+.hist-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.hist-row:last-child{border-bottom:none}
+.hist-date{flex:0 0 52px;color:var(--ink-soft);font-size:12px}
+.hist-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+.bars{flex:1;display:flex;gap:10px}
+.bar-item{flex:1}
+.bar-item span{font-size:10px;color:var(--ink-soft);display:block}
+.bar-track{height:5px;background:var(--line);border-radius:3px;margin-top:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px}
+.tea-count{flex:0 0 auto;font-size:11px;color:var(--moss);font-weight:600}
+.insight{background:var(--moss-soft);border-radius:var(--radius);padding:13px 15px;font-size:13.5px;color:var(--deep);margin-bottom:10px;line-height:1.65}
+.insight b{font-weight:700}
+.empty{text-align:center;color:var(--ink-soft);font-size:13px;padding:26px 10px}
+
+/* 提醒 */
+.rem-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.rem-row:last-child{border-bottom:none}
+.rem-time{flex:0 0 56px;font-family:"Songti TC",serif;font-size:17px;font-weight:700;color:var(--deep)}
+.rem-txt{flex:1}
+.rem-txt small{display:block;font-size:12px;color:var(--ink-soft)}
+.steps{counter-reset:s;list-style:none;font-size:13.5px;color:var(--ink-soft)}
+.steps li{counter-increment:s;padding:7px 0 7px 28px;position:relative;line-height:1.6}
+.steps li::before{
+  content:counter(s);position:absolute;left:0;top:8px;width:19px;height:19px;border-radius:50%;
+  background:var(--deep);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:600;
+}
+.steps li b{color:var(--ink)}
+
+/* 茶飲圖鑑 */
+details.tea{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;overflow:hidden}
+details.tea summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+details.tea summary::-webkit-details-marker{display:none}
+details.tea summary .t-name{font-weight:600;font-size:16px}
+details.tea summary .t-tag{font-size:11px;color:var(--ink-soft)}
+details.tea summary::after{content:"＋";color:var(--ink-soft);font-size:14px}
+details.tea[open] summary::after{content:"－"}
+.tea-body{padding:0 16px 14px;font-size:13.5px}
+.tea-body .row{margin-bottom:8px}
+.tea-body .row b{display:block;font-size:11px;letter-spacing:.15em;color:var(--moss);margin-bottom:2px}
+.tea-body .caution b{color:var(--roselle)}
+
+/* 四期 */
+.phase-card{border-left:4px solid var(--moss)}
+.phase-card h3{font-family:"Songti TC",serif;font-size:18px;letter-spacing:.1em;display:flex;justify-content:space-between;align-items:baseline}
+.phase-card h3 .days{font-family:"PingFang TC",sans-serif;font-size:12px;color:var(--ink-soft);letter-spacing:0}
+.phase-card .theme{font-size:13px;color:var(--ink-soft);margin:4px 0 8px}
+.phase-card ul{list-style:none}
+.phase-card li{font-size:14px;padding:5px 0;border-top:1px solid var(--line);display:flex;gap:10px}
+.phase-card li b{flex:0 0 58px;font-weight:500;color:var(--ink-soft);font-size:12px;padding-top:2px}
+
+/* 設定 */
+.field{margin-bottom:16px}
+.field label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:6px;letter-spacing:.05em}
+.field input,.field select{
+  width:100%;padding:12px 14px;font-size:16px;border:1px solid var(--line);
+  border-radius:12px;background:var(--card);color:var(--ink);font-family:inherit;appearance:none;
+}
+.field input:focus,.field select:focus{outline:2px solid var(--moss);outline-offset:1px}
+button.primary{width:100%;padding:14px;font-size:16px;font-weight:600;border:none;border-radius:12px;background:var(--deep);color:#fff;font-family:inherit;cursor:pointer}
+button.ghost{width:100%;padding:12px;font-size:14px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--ink-soft);font-family:inherit;cursor:pointer;margin-top:8px}
+button:active{opacity:.85}
+.saved-msg{text-align:center;font-size:13px;color:var(--moss);margin-top:10px;min-height:20px}
+.setup-hint{background:var(--gold-soft);border-radius:var(--radius);padding:14px 16px;font-size:14px;margin-bottom:14px;color:#6f5518}
+.disclaimer{font-size:11.5px;color:var(--ink-soft);opacity:.85;margin-top:18px;padding:0 4px;line-height:1.7}
+
+nav{
+  position:fixed;left:0;right:0;bottom:0;background:rgba(253,252,247,.94);backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);display:flex;justify-content:space-around;
+  padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:10;
+}
+nav button{
+  background:none;border:none;font-family:inherit;cursor:pointer;font-size:11px;color:var(--ink-soft);
+  padding:6px 10px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:2px;letter-spacing:.08em;
+}
+nav button .ico{font-size:17px;line-height:1}
+nav button.on{color:var(--deep);background:var(--moss-soft);font-weight:600}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>週期茶曆</h1>
+  <div class="date" id="todayDate"></div>
+</header>
+
+<main>
+
+<!-- ===== 今日 ===== -->
+<div class="page active" id="page-today">
+  <div id="setupHint" class="setup-hint" style="display:none">
+    尚未設定經期資料 — 請先到「設定」輸入上次經期開始日，茶單才能對準你的週期。
+  </div>
+
+  <div class="weather" id="weatherBox">
+    <div class="wx-main"><div class="wx-temp" id="wxTemp">—</div><div class="wx-cond" id="wxCond">讀取天氣中</div></div>
+    <div class="wx-side"><div class="wx-hum" id="wxHum">濕度 —</div><div class="wx-tip" id="wxTip">正在取得目前氣象資料。</div></div>
+  </div>
+
+  <div class="ring-wrap">
+    <div class="ring-box">
+      <svg id="ringSvg" viewBox="0 0 200 200" role="img" aria-label="週期環"></svg>
+      <div class="ring-center">
+        <div class="phase-name" id="phaseName">—</div>
+        <div class="cycle-day" id="cycleDay"></div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--roselle)"></i>經期</span>
+      <span><i style="background:var(--folli)"></i>濾泡期</span>
+      <span><i style="background:var(--gold)"></i>排卵期</span>
+      <span><i style="background:var(--deep)"></i>黃體期</span>
+    </div>
+  </div>
+
+  <div class="section-title">今日茶單 · 點圈勾記</div>
+  <div id="todaySlots"></div>
+
+  <div class="section-title">今日補充品</div>
+  <div id="todaySups"></div>
+
+  <div class="section-title">本期提醒</div>
+  <div class="note-card" id="phaseNote"></div>
+
+  <div class="disclaimer">
+    糖化血色素 5.7% 屬邊界值，茶飲是飲食與作息的輔助，不能取代醫療追蹤；請維持定期回診驗血。若正在服用降血糖或其他藥物，桑葉、山苦瓜、芭樂葉可能有加成效果，飲用前請先與醫師或藥師確認。任何茶飲出現腸胃不適即暫停。
+  </div>
+</div>
+
+<!-- ===== 記錄 ===== -->
+<div class="page" id="page-log">
+  <div class="section-title">今天的身體</div>
+  <div class="card">
+    <div class="log-label"><b>臉部出油</b>　1 清爽 → 5 整臉泛油</div>
+    <div class="scale sun" id="sc-oil"></div>
+
+    <div class="log-label"><b>粉刺／痘況</b>　1 乾淨 → 5 大爆發</div>
+    <div class="scale warm" id="sc-acne"></div>
+
+    <div class="log-label"><b>下午精神</b>　1 撐不住 → 5 很清醒</div>
+    <div class="scale" id="sc-pm"></div>
+
+    <div class="log-label"><b>備註</b>　吃了什麼、睡多久、其他</div>
+    <textarea id="logNote" placeholder="例：午餐炒飯＋含糖飲、睡 5 小時、下巴新冒兩顆"></textarea>
+    <button class="primary" id="logSave" style="margin-top:12px">儲存今天</button>
+    <div class="saved-msg" id="logMsg"></div>
+  </div>
+
+  <div class="section-title">近 14 天</div>
+  <div id="insightBox"></div>
+  <div class="card"><div class="hist" id="histList"></div></div>
+  <button class="ghost" id="exportBtn">匯出全部記錄（文字）</button>
+</div>
+
+<!-- ===== 提醒 ===== -->
+<div class="page" id="page-remind">
+  <div class="section-title">今天要響的時間</div>
+  <div class="card"><div id="remList"></div></div>
+
+  <div class="section-title">層一 · 開著茶曆時提醒</div>
+  <div class="card">
+    <div id="notifState" style="font-size:13.5px;color:var(--ink-soft);line-height:1.6">
+      開啟後，只要茶曆還在背景沒被關掉，時間到就會跳通知。適合上班時放著不管的日子。
+    </div>
+    <button class="primary" id="notifBtn" style="margin-top:12px">開啟通知</button>
+    <div class="saved-msg" id="notifMsg"></div>
+  </div>
+
+  <div class="section-title">層二 · 關掉也會響</div>
+  <div class="note-card" style="border-style:solid;background:var(--gold-soft);color:#6f5518;border-color:#e6d5a8">
+    <b>老實說</b>：即使裝成 app，iOS 仍然沒有「排程本機通知」這個能力 — 真正的背景推播必須由一台伺服器在指定時間送出，而 GitHub Pages 只放靜態檔案、沒有伺服器。<br><br>
+    所以「關掉 app 也會準時響」這件事，最可靠的做法是借用 iPhone 內建的<b>捷徑</b>：一次設定，之後每天自動響，還能順手打開茶曆。
+  </div>
+  <div class="card">
+    <ol class="steps">
+      <li>打開 iPhone 內建的 <b>捷徑</b> App，切到下方「<b>自動化</b>」。</li>
+      <li>點右上 <b>＋</b> → 選 <b>時間</b> → 設第一個時段（例如 07:30）→ <b>每天</b> → 選「<b>立即執行</b>」，並關閉「執行前先詢問」。</li>
+      <li>加入動作：搜尋「<b>顯示通知</b>」，內文貼上下面複製的文字。</li>
+      <li>想讓它順手打開茶曆：再加一個動作「<b>打開 App</b>」→ 選<b>週期茶曆</b>（裝成 PWA 後就會出現在清單裡）。</li>
+      <li>其餘時段重複一次。四期的時間表不同，換期時回這頁重新複製即可。</li>
+    </ol>
+    <button class="ghost" id="copyRem" style="margin-top:10px">複製今天的提醒文字</button>
+    <div class="saved-msg" id="copyMsg"></div>
+  </div>
+  <div class="note-card">
+    最土法但最保險：<b>時鐘 App 的鬧鐘</b>，標籤打「餐前桑葉茶」「鋅（勿配茶）」，設成每天重複。不漂亮，但一定會響。
+  </div>
+</div>
+
+<!-- ===== 四期 ===== -->
+<div class="page" id="page-phases">
+  <div class="section-title">四期茶譜總覽</div>
+  <div id="phaseCards"></div>
+</div>
+
+<!-- ===== 圖鑑 ===== -->
+<div class="page" id="page-teas">
+  <div class="section-title">茶飲 · 十二味</div>
+  <div id="teaList"></div>
+
+  <div class="section-title">補充品 · 五項</div>
+  <div class="note-card" style="border-style:solid;background:var(--roselle-soft);border-color:#e8c6cd;color:#7d2f3f">
+    <b>三條吸收規則，比吃什麼更重要</b><br>
+    ① <b>鋅不配茶</b> — 單寧與植酸大幅降低吸收，間隔 2 小時。<br>
+    ② <b>魚油、蝦紅素、薑黃要有油</b> — 全是脂溶性，空腹吃等於白吃。薑黃另需一小撮黑胡椒。<br>
+    ③ <b>鎂放睡前</b> — 助眠，而睡眠是出油與血糖共同的上游。
+  </div>
+  <div id="supList"></div>
+
+  <div class="disclaimer">
+    這五樣沒有一樣是「必須」的。若要排優先順序：<b>鋅</b>與<b>魚油</b>對粉刺的證據最紮實，<b>鎂</b>對睡眠與經前最有感，<b>薑黃</b>用料理方式最安全，<b>蝦紅素</b>是長期投資、短期最無感。不必五樣一起上，也不必都吃到上限。補充品有交互作用與劑量上限，開始前建議跟醫師或藥師確認一次，尤其你有在追蹤糖化血色素。
+  </div>
+</div>
+
+<!-- ===== 設定 ===== -->
+<div class="page" id="page-settings">
+  <div class="section-title">週期設定</div>
+  <div class="card">
+    <div class="field"><label for="lastPeriod">上次經期開始日</label><input type="date" id="lastPeriod"></div>
+    <div class="field"><label for="cycleLen">平均週期長度（天）</label><select id="cycleLen"></select></div>
+    <div class="field"><label for="periodLen">經期天數</label><select id="periodLen"></select></div>
+    <div class="field"><label for="city">天氣所在地</label><select id="city"></select></div>
+    <button class="primary" id="saveBtn">儲存設定</button>
+    <div class="saved-msg" id="savedMsg"></div>
+  </div>
+  <div class="note-card">
+    所有資料（週期、每日記錄）只存在這支手機的瀏覽器裡，不會上傳。每次月經來的第一天，回到這裡更新日期，週期環就會重新對準。<br><br>
+    天氣由 Open-Meteo 公開氣象服務即時取得，只送出城市座標，不含任何個人資料。
+  </div>
+</div>
+
+</main>
+
+<nav>
+  <button data-page="today" class="on"><span class="ico">☰</span>今日</button>
+  <button data-page="log"><span class="ico">✓</span>記錄</button>
+  <button data-page="remind"><span class="ico">◷</span>提醒</button>
+  <button data-page="phases"><span class="ico">◔</span>四期</button>
+  <button data-page="teas"><span class="ico">✻</span>圖鑑</button>
+  <button data-page="settings"><span class="ico">⚙</span>設定</button>
+</nav>
+
+<script>
+/* ============ 茶飲資料 ============ */
+const TEAS = {
+  mulberry:{name:"桑葉茶",tag:"餐前壓糖主力",nature:"性偏涼",
+    good:"含 DNJ（1-脫氧野尻黴素），能抑制腸道分解雙醣的酵素，延緩糖分吸收、壓低餐後血糖尖峰，是針對糖化血色素 5.7 最直接的一味。另含 GABA 與槲皮素。",
+    nutrients:"DNJ、GABA、槲皮素、鈣、鉀",
+    timing:"餐前 15–30 分鐘喝效果最好；隨餐喝次之。",
+    caution:"性偏涼，經期量多或易經痛時改喝牛蒡。與降血糖藥併用前先問醫師。"},
+  guava:{name:"芭樂葉茶",tag:"餐後血糖 · 嗜甜救援",nature:"性平微澀",
+    good:"槲皮素與多酚可抑制澱粉分解酵素，減緩碳水化合物轉成葡萄糖的速度，適合正餐澱粉較多、或黃體期嗜甜想吃點心時搭配。",
+    nutrients:"槲皮素、芭樂葉多酚、單寧、維生素C",
+    timing:"餐前或隨餐；吃甜點前喝一杯尤其合適。",
+    caution:"單寧較多，容易便祕者不要整天連續喝；空腹大量可能澀胃。"},
+  bittermelon:{name:"山苦瓜茶",tag:"類胰島素作用",nature:"性寒",
+    good:"含苦瓜苷（charantin）、多肽-P 與三萜類，有類胰島素作用、幫助細胞利用葡萄糖，是血糖調理的經典本土素材。",
+    nutrients:"苦瓜苷、多肽-P、三萜類、鉀",
+    timing:"濾泡期餐前飲用最合適，此時代謝好、也離經期最遠。",
+    caution:"八味中最寒，經期與經前一週避免；手腳容易冰冷者減量。與降血糖藥併用注意低血糖。"},
+  burdock:{name:"牛蒡茶",tag:"全週期底茶 · 經期主力",nature:"性溫和",
+    good:"菊糖（inulin）是益生元，養好腸道菌相會間接反映在膚況與發炎程度上；膳食纖維與綠原酸也讓血糖曲線更平穩。八味中最溫和，經期唯一可以放心當主力的茶。",
+    nutrients:"菊糖、綠原酸、牛蒡苷、膳食纖維、鉀",
+    timing:"全天皆可，可回沖 2–3 次當開水喝。",
+    caution:"剛開始喝若腸道產氣較多屬正常，一至兩週會適應。"},
+  houttuynia:{name:"魚腥草茶",tag:"控油 · 粉刺消防隊",nature:"性寒",
+    good:"槲皮素與癸醯乙醛（魚腥草素）有明確的抗發炎、抑菌方向，傳統上就是「清熱」用途——對出油旺、紅腫型粉刺爆發特別對症。",
+    nutrients:"槲皮素、癸醯乙醛、鉀、揮發油",
+    timing:"排卵期開始、黃體期爆粉刺時，午後或晚間喝。",
+    caution:"性寒，經期與經前三天停用；不建議天天長期連喝，粉刺穩定就停，讓身體休息。"},
+  jewel:{name:"金線蓮茶",tag:"護肝 · 抗疲勞",nature:"性平微涼",
+    good:"金線蓮苷（kinsenoside）與多醣體在研究中與護肝、調節血糖、抗疲勞相關，台灣傳統視為溫和的養護茶，適合下午精神下滑時接手。",
+    nutrients:"金線蓮苷、多醣體、類黃酮、胺基酸",
+    timing:"午後溫飲；經期也可以喝（溫熱喝）。",
+    caution:"性質溫和，少有禁忌；選有信譽的來源，避免混充品。"},
+  roselle:{name:"洛神茶",tag:"PM 提神 · 抗氧化",nature:"微涼偏酸",
+    good:"花青素與木槿酸抗氧化力強，研究上與血脂、血壓改善相關；酸香明亮、無咖啡因，下午 2–4 點喝能醒腦又不影響睡眠。",
+    nutrients:"花青素、木槿酸、有機酸、維生素C",
+    timing:"午後疲勞時段；不加糖或只加極少量。",
+    caution:"偏酸，空腹胃酸過多者飯後喝；經期改溫飲少量或直接跳過。加糖會抵銷血糖上的好處。"},
+  thistle:{name:"阿里山薊茶",tag:"護肝 · 荷爾蒙代謝後盾",nature:"性平",
+    good:"即雞角刺，含綠原酸與類黃酮苷，成分方向與水飛薊素相近，傳統用於護肝。雌激素由肝臟代謝，黃體期讓肝臟順暢運轉，對經前膚況是後勤支援。",
+    nutrients:"綠原酸、類黃酮苷、多酚",
+    timing:"黃體期晚間飲用。",
+    caution:"性平溫和；孕期或服用經肝代謝藥物者先諮詢。"},
+  green:{name:"綠茶",tag:"控油核心 · 咖啡因",nature:"性涼｜咖啡因 中",
+    good:"EGCG 是你這批茶裡對「出油」證據最直接的成分：能抑制 5α-還原酶、降低皮脂腺活性，臨床上與痤瘡改善相關。同時 EGCG 也改善胰島素敏感度，一味同時打血糖與粉刺兩個目標。",
+    nutrients:"EGCG／兒茶素、L-茶胺酸、咖啡因、維生素C",
+    timing:"上午到 14:00 前。80°C 水沖，太燙會苦澀且破壞兒茶素。",
+    caution:"咖啡因約 30mg／杯，14:00 後不喝。單寧抑制鐵吸收，經期避免配飯喝。空腹喝易胃不適。"},
+  matcha:{name:"抹茶",tag:"整片吃下去 · 咖啡因最高",nature:"性涼｜咖啡因 高",
+    good:"整片茶葉磨粉，EGCG 與 L-茶胺酸攝取量遠高於沖泡綠茶。茶胺酸讓咖啡因的提神變得平穩、不心悸——這正是 PM 疲勞最想要的質感。",
+    nutrients:"EGCG（高濃度）、L-茶胺酸、咖啡因、葉綠素、纖維",
+    timing:"早上或午餐後立刻喝，是四款咖啡因茶裡最該早喝的。",
+    caution:"咖啡因約 60–70mg／碗，最高。因為整葉吃下，EGCG 劑量大，一天一碗為限。不加糖、不加煉乳——加了就抵銷血糖上的好處。"},
+  black:{name:"紅茶",tag:"經期溫飲 · 咖啡因",nature:"性溫｜咖啡因 中高",
+    good:"全發酵，四款裡唯一性溫，是經期唯一適合的咖啡因茶。茶黃素與茶紅素同樣能延緩糖分吸收，只是控油力不如綠茶。",
+    nutrients:"茶黃素、茶紅素、咖啡因、錳",
+    timing:"經期早上或午前，溫熱喝。務必在兩餐之間，不要配飯。",
+    caution:"單寧最強，抑制鐵吸收也最明顯——經期正在失血，配飯喝等於扯後腿。與正餐間隔至少 1 小時。"},
+  redoolong:{name:"紅烏龍",tag:"顧胃版提神 · 咖啡因",nature:"性平｜咖啡因 中",
+    good:"台東特產、重發酵烏龍，走在綠茶與紅茶之間。發酵度高所以單寧的刺激感較低，胃比較不會不舒服；仍保有烏龍多酚，動物研究與脂質代謝相關。",
+    nutrients:"烏龍多酚、茶黃素、咖啡因、礦物質",
+    timing:"黃體期午後 14:00 前的首選——比綠茶溫和、比紅茶清爽。",
+    caution:"仍有咖啡因，過 14:00 就換洛神或金線蓮。"}
+};
+
+/* ============ 補充品資料 ============ */
+const SUPS = {
+  zinc:{name:"鋅",tag:"粉刺證據最強",dose:"15–30 mg／天（口服鋅元素量）",
+    good:"在你這五樣裡，鋅是對痤瘡最有實證支持的一項：抑制皮脂腺活性、抗發炎、抑制痤瘡桿菌。同時參與胰島素的合成與儲存，對血糖也有間接角色。",
+    nutrients:"建議形式：吡啶甲酸鋅（picolinate）或檸檬酸鋅，吸收較好、較不刺胃",
+    timing:"隨餐吃（空腹易噁心）。排卵期到黃體期最需要——正好是你出油爬升的時段。",
+    caution:"⚠ 不要配茶或咖啡吃：單寧與植酸會顯著降低吸收，至少間隔 2 小時。也要與鈣、鐵補充品錯開。長期超過 40mg／天會拮抗銅，別為了戰痘一直加量。"},
+  mag:{name:"鎂",tag:"睡眠 · 經前 · 胰島素",dose:"200–400 mg／天（鎂元素量）",
+    good:"三個角度都打到你：改善胰島素敏感度（血糖）、緩解經前情緒與水腫、幫助入睡——而睡眠是出油與血糖共同的上游。",
+    nutrients:"甘胺酸鎂（glycinate）助眠不腹瀉；檸檬酸鎂會軟便；氧化鎂吸收最差",
+    timing:"睡前 1 小時。黃體期加強，這時鎂的流失與需求都升高。",
+    caution:"檸檬酸鎂與氧化鎂會拉肚子，怕的話選甘胺酸鎂。腎功能不佳者須先問醫師。"},
+  astax:{name:"蝦紅素",tag:"抗氧化 · 皮膚屏障",dose:"4–12 mg／天",
+    good:"抗氧化力在類胡蘿蔔素中屬前段，且能穿透細胞膜的雙層結構。研究與皮膚彈性、抗紫外線傷害、屏障功能相關——台北夏天紫外線強，這一項有它的位置。",
+    nutrients:"脂溶性，來源多為雨生紅球藻",
+    timing:"隨含油脂的一餐吃（早餐有蛋、堅果那餐最好），空腹吃幾乎白吃。",
+    caution:"對「已經冒出來的粉刺」幫助不如鋅與魚油直接，它比較像長期的屏障投資。可能讓膚色略微偏暖，屬正常。"},
+  fishoil:{name:"魚油",tag:"抗發炎 · 紅腫痘",dose:"EPA + DHA 合計 1,000–2,000 mg／天",
+    good:"Omega-3 把發炎路徑往下調，對「紅腫、發炎型」的痘特別有意義（對純閉鎖粉刺幫助較小）。同時改善三酸甘油酯與胰島素敏感度。",
+    nutrients:"看標示上的 EPA/DHA 實際含量，不是膠囊總重量——1000mg 魚油常常只有 300mg EPA+DHA",
+    timing:"隨餐吃，脂溶性。黃體期全期都值得吃。",
+    caution:"⚠ 有輕微抗血小板作用。若你月經量本來就偏多，經期那幾天可以減半或暫停；有在服用抗凝血藥物請先問醫師。買有第三方檢驗、標示氧化值（TOTOX）的品牌，油耗掉的魚油反而促發炎。"},
+  turmeric:{name:"薑黃粉",tag:"抗發炎 · 血糖",dose:"料理用 1/2–1 茶匙／天",
+    good:"薑黃素抗發炎，並在多項研究中與空腹血糖、糖化血色素改善相關——是這五樣裡唯一同時掛在你「血糖」與「發炎」兩張清單上的。",
+    nutrients:"薑黃素（curcumin）、薑黃揮發油",
+    timing:"入菜。務必搭配：① 油脂 ② 一小撮黑胡椒（胡椒鹼把吸收率拉高數倍）。單獨用溫水沖粉幾乎吸收不到。",
+    caution:"膽結石或膽道阻塞者避免。高劑量萃取物可能影響凝血、與降血糖藥有加成——料理用量無虞，但別自行改吃高單位膠囊。"}
+};
+
+/* ============ 四期茶譜（含提醒時刻） ============ */
+const PHASES = {
+  menstrual:{key:"menstrual",name:"經期",color:"var(--roselle)",hex:"#A83E52",
+    theme:"溫和、保暖、不寒涼。皮脂略降，重點是休息、補水、不干擾鐵吸收。",
+    slots:[
+      {id:"m0",at:"09:30",time:"餐間",tea:"紅茶（溫）",why:"四款咖啡因茶裡唯一性溫。與正餐隔開 1 小時，避免單寧擋鐵",chips:["PM疲勞","咖啡因"]},
+      {id:"m1",at:"12:30",time:"午餐後",tea:"牛蒡茶",why:"菊糖與纖維讓血糖平穩，性溫不刺激",chips:["血糖","腸道"]},
+      {id:"m2",at:"14:30",time:"午後",tea:"金線蓮茶",why:"溫熱喝，撐住下午精神又不寒、不含咖啡因",chips:["PM疲勞","護肝"]},
+      {id:"m3",at:"20:00",time:"晚間",tea:"牛蒡回沖",why:"回沖當溫開水，維持水分",chips:["補水"]}
+    ],
+    sup:[
+      {id:"ms1",at:"早餐",name:"魚油",dose:"減半或暫停",why:"有輕微抗血小板作用；經量多的日子先讓步",chips:["調整"]},
+      {id:"ms2",at:"晚餐",name:"鋅 15mg",dose:"隨餐",why:"照常，但務必與紅茶間隔 2 小時",chips:["粉刺"]},
+      {id:"ms3",at:"睡前",name:"鎂 300mg",dose:"甘胺酸鎂",why:"緩解經期不適與睡眠中斷",chips:["睡眠"]}
+    ],
+    avoid:"避開：山苦瓜、魚腥草、冰洛神——性寒或偏酸。紅茶／綠茶不要配飯，單寧會擋掉正在流失的鐵。",
+    note:"經期血糖對睡眠不足特別敏感，早點睡比多喝一杯茶更有用。桑葉暫停，改由牛蒡顧血糖。"},
+  follicular:{key:"follicular",name:"濾泡期",color:"var(--folli)",hex:"#7BA05B",
+    theme:"雌激素回升、代謝黃金期，膚況最穩——血糖控制火力全開的時段。",
+    slots:[
+      {id:"f1",at:"07:30",time:"早餐前",tea:"桑葉茶",why:"DNJ 搶在早餐前就位，壓低餐後血糖尖峰",chips:["血糖"]},
+      {id:"f0",at:"09:30",time:"上午",tea:"抹茶",why:"代謝最好的時段配 EGCG 最高的一味，血糖與控油雙打",chips:["血糖","控油","咖啡因"]},
+      {id:"f2",at:"11:45",time:"午餐前",tea:"芭樂葉茶",why:"多酚延緩午餐澱粉吸收",chips:["血糖"]},
+      {id:"f3",at:"14:30",time:"午後",tea:"洛神茶",why:"過了咖啡因截止線，改用花青素醒腦",chips:["PM疲勞","抗氧化"]},
+      {id:"f4",at:"18:00",time:"晚餐前",tea:"山苦瓜茶",why:"離經期最遠的時段，寒性茶此時喝最安全",chips:["血糖"]}
+    ],
+    sup:[
+      {id:"fs1",at:"早餐",name:"魚油 + 蝦紅素",dose:"隨油脂餐",why:"兩者皆脂溶性，一起配早餐吸收最好",chips:["抗發炎","抗氧化"]},
+      {id:"fs2",at:"晚餐",name:"鋅 15mg",dose:"隨餐",why:"與抹茶間隔 2 小時以上",chips:["粉刺"]},
+      {id:"fs3",at:"睡前",name:"鎂 200mg",dose:"維持量",why:"這期需求較低，維持基本量即可",chips:["睡眠"]}
+    ],
+    avoid:"",
+    note:"這段時間搭配飯後散步 10–15 分鐘，對糖化血色素的幫助會比單靠茶大得多。"},
+  ovulation:{key:"ovulation",name:"排卵期",color:"var(--gold)",hex:"#B98A2F",
+    theme:"皮脂開始爬升——搶在粉刺形成前先壓制。EGCG 與鋅同時上場。",
+    slots:[
+      {id:"o1",at:"07:30",time:"早餐前",tea:"桑葉茶",why:"血糖主力不間斷",chips:["血糖"]},
+      {id:"o0",at:"10:00",time:"上午",tea:"綠茶",why:"EGCG 抑制 5α-還原酶、降低皮脂腺活性，出油起點就卡位",chips:["控油","咖啡因"]},
+      {id:"o2",at:"14:00",time:"午後",tea:"魚腥草茶",why:"清熱抗發炎，與綠茶前後夾擊皮脂",chips:["控油","粉刺"]},
+      {id:"o3",at:"18:00",time:"晚餐前",tea:"芭樂葉茶",why:"顧晚餐後血糖",chips:["血糖"]},
+      {id:"o4",at:"20:30",time:"晚間",tea:"牛蒡茶",why:"益生元養腸，從腸道端支援膚況",chips:["腸道","皮膚"]}
+    ],
+    sup:[
+      {id:"os1",at:"早餐",name:"魚油 + 蝦紅素",dose:"隨油脂餐",why:"抗發炎預備，趕在爆痘前建立底子",chips:["抗發炎"]},
+      {id:"os2",at:"晚餐",name:"鋅 30mg",dose:"加量",why:"出油爬升的起點，鋅是這裡證據最強的一張牌",chips:["粉刺","加量"]},
+      {id:"os3",at:"晚餐",name:"薑黃粉 半茶匙",dose:"入菜＋油＋黑胡椒",why:"抗發炎＋血糖，兩張清單都掛到",chips:["血糖","抗發炎"]},
+      {id:"os4",at:"睡前",name:"鎂 300mg",dose:"甘胺酸鎂",why:"為黃體期的睡眠品質預先鋪路",chips:["睡眠"]}
+    ],
+    avoid:"",
+    note:"出油會比粉刺早兩三天出現——這幾天把綠茶、魚腥草、鋅做滿，黃體期會輕很多。這是整個週期最划算的三天。"},
+  luteal:{key:"luteal",name:"黃體期",color:"var(--deep)",hex:"#3E5C4E",
+    theme:"出油與粉刺高峰＋午後疲勞＋嗜甜——本 app 的主戰場。",
+    slots:[
+      {id:"l1",at:"07:30",time:"早餐前",tea:"桑葉茶／芭樂葉茶",why:"兩味輪替。黃體期胰島素敏感度下降，餐前壓糖更重要",chips:["血糖"]},
+      {id:"l0",at:"13:30",time:"午後 · 咖啡因末班車",tea:"紅烏龍",why:"重發酵、單寧刺激低，顧胃版提神。過 14:00 就別再喝",chips:["PM疲勞","咖啡因"]},
+      {id:"l2",at:"15:30",time:"午後 3–4",tea:"洛神茶／金線蓮茶",why:"接棒無咖啡因，撐過疲勞谷底又不吃掉睡眠",chips:["PM疲勞"]},
+      {id:"l3",at:"16:00",time:"想吃甜",tea:"芭樂葉茶",why:"嗜甜難免，甜點前先喝一杯緩衝血糖",chips:["血糖","嗜甜"]},
+      {id:"l4",at:"20:30",time:"晚間",tea:"魚腥草茶／阿里山薊茶",why:"爆粉刺日喝魚腥草；膚況平穩日喝薊茶護肝",chips:["粉刺","護肝"]}
+    ],
+    sup:[
+      {id:"ls1",at:"早餐",name:"魚油 2000mg",dose:"EPA+DHA 足量",why:"紅腫發炎型痘的主力，這期把劑量吃滿",chips:["抗發炎","加量"]},
+      {id:"ls2",at:"早餐",name:"蝦紅素",dose:"隨油脂餐",why:"屏障與抗氧化的長期投資",chips:["抗氧化"]},
+      {id:"ls3",at:"晚餐",name:"鋅 30mg",dose:"加量",why:"皮脂高峰期，維持高檔",chips:["粉刺","加量"]},
+      {id:"ls4",at:"晚餐",name:"薑黃粉 1 茶匙",dose:"入菜＋油＋黑胡椒",why:"黃體期血糖波動最大，薑黃兩邊都幫得上",chips:["血糖","抗發炎"]},
+      {id:"ls5",at:"睡前",name:"鎂 400mg",dose:"甘胺酸鎂・全期最高",why:"經前情緒、水腫、睡眠中斷——鎂在這期需求最高",chips:["睡眠","加量"]}
+    ],
+    avoid:"經前最後 3 天：魚腥草、山苦瓜停用，晚間改回牛蒡。若月經量偏多，魚油同步開始減半。",
+    note:"黃體期血糖波動本來就變大、也更想吃甜——這是荷爾蒙造成的，不是意志力問題。點心選有蛋白質的（無糖優格、茶葉蛋），配芭樂葉茶。咖啡因 14:00 後停，睡眠是出油與血糖共同的上游。"}
+};
+
+const CITIES=[
+  {n:"台北",lat:25.033,lon:121.565},{n:"新北",lat:25.012,lon:121.465},
+  {n:"桃園",lat:24.993,lon:121.301},{n:"新竹",lat:24.804,lon:120.972},
+  {n:"台中",lat:24.147,lon:120.673},{n:"台南",lat:22.999,lon:120.227},
+  {n:"高雄",lat:22.627,lon:120.301},{n:"宜蘭",lat:24.757,lon:121.753},
+  {n:"花蓮",lat:23.991,lon:121.601},{n:"台東",lat:22.758,lon:121.144}
+];
+const WCODE={0:"晴朗",1:"大致晴",2:"局部多雲",3:"陰天",45:"有霧",48:"霧淞",51:"毛毛雨",53:"毛毛雨",55:"毛毛雨",61:"小雨",63:"中雨",65:"大雨",71:"下雪",80:"陣雨",81:"陣雨",82:"強陣雨",95:"雷雨",96:"雷雨",99:"劇烈雷雨"};
+
+/* ============ 儲存 ============ */
+const ST={
+  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+const todayKey=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
+
+/* ============ 週期計算 ============ */
+function calcPhase(s){
+  if(!s||!s.lastPeriod) return null;
+  const start=new Date(s.lastPeriod+"T00:00:00");
+  const t=new Date(); t.setHours(0,0,0,0);
+  let diff=Math.floor((t-start)/86400000);
+  if(diff<0) return null;
+  const L=s.cycleLen,P=s.periodLen,ovu=L-14;
+  const day=(diff%L)+1;
+  let phase;
+  if(day<=P) phase="menstrual";
+  else if(day<ovu-1) phase="follicular";
+  else if(day<=ovu+1) phase="ovulation";
+  else phase="luteal";
+  return {day,L,P,ovu,phase};
+}
+
+/* ============ 週期環 ============ */
+const polar=(cx,cy,r,a)=>{const t=(a-90)*Math.PI/180;return [cx+r*Math.cos(t),cy+r*Math.sin(t)]};
+function arcPath(cx,cy,r,a0,a1){
+  const [x0,y0]=polar(cx,cy,r,a0),[x1,y1]=polar(cx,cy,r,a1);
+  return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${(a1-a0)>180?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+}
+function drawRing(info){
+  const svg=document.getElementById("ringSvg");
+  if(!info){svg.innerHTML=`<circle cx="100" cy="100" r="82" fill="none" stroke="var(--line)" stroke-width="14"/>`;return}
+  const {L,P,ovu,day}=info,cx=100,cy=100,r=82,gap=2.5;
+  const segs=[
+    {c:"var(--roselle)",d0:1,d1:P},{c:"var(--folli)",d0:P+1,d1:ovu-2},
+    {c:"var(--gold)",d0:ovu-1,d1:ovu+1},{c:"var(--deep)",d0:ovu+2,d1:L}
+  ];
+  let h="";
+  segs.forEach(s=>{
+    const a0=(s.d0-1)/L*360+gap/2,a1=s.d1/L*360-gap/2;
+    if(a1>a0) h+=`<path d="${arcPath(cx,cy,r,a0,a1)}" fill="none" stroke="${s.c}" stroke-width="14" stroke-linecap="round" opacity=".9"/>`;
+  });
+  const [mx,my]=polar(cx,cy,r,(day-.5)/L*360);
+  h+=`<circle cx="${mx.toFixed(2)}" cy="${my.toFixed(2)}" r="8" fill="var(--card)" stroke="var(--ink)" stroke-width="2.5"/>`;
+  svg.innerHTML=h;
+}
+
+/* ============ 天氣 ============ */
+async function loadWeather(){
+  const s=ST.get("teaCycle",{});
+  const c=CITIES.find(x=>x.n===(s.city||"台北"))||CITIES[0];
+  const box=document.getElementById("weatherBox");
+  try{
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}`
+      +`&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&timezone=Asia%2FTaipei`;
+    const r=await fetch(url);
+    if(!r.ok) throw 0;
+    const d=(await r.json()).current;
+    const t=Math.round(d.temperature_2m), feel=Math.round(d.apparent_temperature), hum=d.relative_humidity_2m;
+    box.classList.remove("err");
+    document.getElementById("wxTemp").textContent=t+"°";
+    document.getElementById("wxCond").textContent=`${c.n}・${WCODE[d.weather_code]||"—"}`;
+    document.getElementById("wxHum").textContent=`濕度 ${hum}%　體感 ${feel}°`;
+    document.getElementById("wxTip").textContent=weatherTip(t,hum,feel);
+  }catch(e){
+    box.classList.add("err");
+    document.getElementById("wxTemp").textContent="—";
+    document.getElementById("wxCond").textContent="無法連線";
+    document.getElementById("wxHum").textContent="濕度未知";
+    document.getElementById("wxTip").textContent="沒抓到天氣（可能離線）。連上網路後重開這一頁即可。";
+  }
+}
+function weatherTip(t,h,feel){
+  const info=calcPhase(ST.get("teaCycle",null));
+  const ph=info?info.phase:null;
+  const hot=feel>=32||t>=31, humid=h>=75, dry=h<55;
+  if(hot&&humid){
+    return ph==="menstrual"
+      ? "悶熱高濕，皮脂與汗混合最容易堵塞毛孔。經期不喝寒茶，改以牛蒡多補水、清潔加勤一次。"
+      : "悶熱高濕，出油與粉刺風險最高的組合。今天的魚腥草別跳過，中午出門後補一次控油紙。";
+  }
+  if(hot&&!humid) return "高溫但不悶。水分流失快，牛蒡回沖當開水整天喝，避免脫水讓皮脂更濃稠。";
+  if(humid&&!hot) return "濕氣重、溫度不高。悶感會讓粉刺變多，洗完臉務必擦乾，保濕選清爽型。";
+  if(dry) return "空氣偏乾。出油有時是缺水的代償反應，別過度清潔，把保濕做足反而會少油。";
+  return "溫濕度都舒適，膚況壓力小。照今天的茶單走就好。";
+}
+
+/* ============ 今日 ============ */
+function renderToday(){
+  const s=ST.get("teaCycle",null), info=calcPhase(s);
+  document.getElementById("setupHint").style.display=info?"none":"block";
+  drawRing(info);
+  const pn=document.getElementById("phaseName"),cd=document.getElementById("cycleDay");
+  const wrap=document.getElementById("todaySlots"),note=document.getElementById("phaseNote");
+  if(!info){
+    pn.textContent="—";cd.textContent="請先完成設定";wrap.innerHTML="";
+    note.textContent="設定完成後，這裡會依照你當天所在的週期階段，排出早、午、晚的茶單。";
+    return;
+  }
+  const P=PHASES[info.phase];
+  pn.textContent=P.name;pn.style.color=P.color;
+  cd.textContent=`第 ${info.day} 天／共 ${info.L} 天`;
+  const log=ST.get("teaLog",{})[todayKey()]||{};
+  const doneT=log.teas||[], doneS=log.sups||[];
+
+  const chip=c=>`<span class="chip${["粉刺","控油","加量","調整"].includes(c)?" warn":""}${["血糖","嗜甜","咖啡因"].includes(c)?" gold":""}">${c}</span>`;
+
+  wrap.innerHTML=P.slots.map(s2=>`
+    <div class="card"><div class="slot">
+      <div class="tick ${doneT.includes(s2.id)?"on":""}" data-k="teas" data-id="${s2.id}" role="checkbox" aria-checked="${doneT.includes(s2.id)}" tabindex="0">✓</div>
+      <div class="slot-time">${s2.at}<br>${s2.time}</div>
+      <div class="slot-body">
+        <div class="slot-tea">${s2.tea}</div>
+        <div class="slot-why">${s2.why}</div>
+        <div class="chips">${s2.chips.map(chip).join("")}</div>
+      </div>
+    </div></div>`).join("") + (P.avoid?`<div class="note-card"><span class="avoid">${P.avoid}</span></div>`:"");
+
+  document.getElementById("todaySups").innerHTML=(P.sup||[]).map(s2=>`
+    <div class="card sup-card"><div class="slot">
+      <div class="tick ${doneS.includes(s2.id)?"on":""}" data-k="sups" data-id="${s2.id}" role="checkbox" aria-checked="${doneS.includes(s2.id)}" tabindex="0">✓</div>
+      <div class="slot-time">${s2.at}</div>
+      <div class="slot-body">
+        <div class="slot-tea">${s2.name}<small>${s2.dose}</small></div>
+        <div class="slot-why">${s2.why}</div>
+        <div class="chips">${s2.chips.map(chip).join("")}</div>
+      </div>
+    </div></div>`).join("");
+
+  note.textContent=P.note;
+  document.querySelectorAll("#todaySlots .tick, #todaySups .tick").forEach(t=>{
+    const fire=()=>toggleItem(t.dataset.k,t.dataset.id,t);
+    t.addEventListener("click",fire);
+    t.addEventListener("keydown",e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();fire()}});
+  });
+}
+function toggleItem(key,id,el){
+  const all=ST.get("teaLog",{}), k=todayKey();
+  const d=all[k]||{};
+  d[key]=d[key]||[];
+  const i=d[key].indexOf(id);
+  if(i<0) d[key].push(id); else d[key].splice(i,1);
+  const info=calcPhase(ST.get("teaCycle",null));
+  if(info){d.phase=info.phase;d.day=info.day}
+  all[k]=d; ST.set("teaLog",all);
+  el.classList.toggle("on");
+  el.setAttribute("aria-checked",el.classList.contains("on"));
+  renderHistory();
+}
+
+/* ============ 記錄 ============ */
+const SCALES=[["sc-oil","oil"],["sc-acne","acne"],["sc-pm","pm"]];
+function buildScales(){
+  SCALES.forEach(([elId,key])=>{
+    const el=document.getElementById(elId);
+    el.innerHTML=[1,2,3,4,5].map(n=>`<button data-k="${key}" data-v="${n}">${n}</button>`).join("");
+    el.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+      el.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+    }));
+  });
+}
+function loadTodayLog(){
+  const d=ST.get("teaLog",{})[todayKey()]||{};
+  SCALES.forEach(([elId,key])=>{
+    document.querySelectorAll(`#${elId} button`).forEach(b=>{
+      b.classList.toggle("on", d[key]===+b.dataset.v);
+    });
+  });
+  document.getElementById("logNote").value=d.note||"";
+}
+document.getElementById("logSave").addEventListener("click",()=>{
+  const all=ST.get("teaLog",{}),k=todayKey();
+  const d=all[k]||{};
+  SCALES.forEach(([elId,key])=>{
+    const on=document.querySelector(`#${elId} button.on`);
+    if(on) d[key]=+on.dataset.v;
+  });
+  d.note=document.getElementById("logNote").value.trim();
+  const info=calcPhase(ST.get("teaCycle",null));
+  if(info){d.phase=info.phase;d.day=info.day}
+  all[k]=d; ST.set("teaLog",all);
+  const m=document.getElementById("logMsg");
+  m.textContent="已儲存今天 ✓";
+  renderHistory();
+  setTimeout(()=>m.textContent="",2000);
+});
+
+function lastDays(n){
+  const out=[],all=ST.get("teaLog",{});
+  for(let i=0;i<n;i++){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    if(all[k]) out.push({k,d,...all[k]});
+  }
+  return out;
+}
+function renderHistory(){
+  const rows=lastDays(14);
+  const list=document.getElementById("histList");
+  if(!rows.length){
+    list.innerHTML=`<div class="empty">還沒有記錄。<br>勾一杯茶、或按上面的「儲存今天」就會出現。</div>`;
+    document.getElementById("insightBox").innerHTML="";
+    return;
+  }
+  list.innerHTML=rows.map(r=>{
+    const hex=PHASES[r.phase]?.hex||"#DEDACB";
+    const bar=(v,c)=>`<div class="bar-track"><div class="bar-fill" style="width:${(v||0)/5*100}%;background:${c}"></div></div>`;
+    return `<div class="hist-row">
+      <div class="hist-date">${r.d.getMonth()+1}/${r.d.getDate()}</div>
+      <div class="hist-dot" style="background:${hex}"></div>
+      <div class="bars">
+        <div class="bar-item"><span>油 ${r.oil||"–"}</span>${bar(r.oil,"#B98A2F")}</div>
+        <div class="bar-item"><span>刺 ${r.acne||"–"}</span>${bar(r.acne,"#A83E52")}</div>
+        <div class="bar-item"><span>神 ${r.pm||"–"}</span>${bar(r.pm,"#3E5C4E")}</div>
+      </div>
+      <div class="tea-count">${(r.teas||[]).length}杯<br><span style="color:var(--gold)">${(r.sups||[]).length}品</span></div>
+    </div>`;
+  }).join("");
+  renderInsight(rows);
+}
+function avg(a){return a.length? a.reduce((x,y)=>x+y,0)/a.length : null}
+function renderInsight(rows){
+  const box=document.getElementById("insightBox");
+  const bits=[];
+  const acne=rows.filter(r=>r.acne);
+  if(acne.length>=5){
+    const lut=avg(acne.filter(r=>r.phase==="luteal").map(r=>r.acne));
+    const fol=avg(acne.filter(r=>r.phase==="follicular").map(r=>r.acne));
+    if(lut!==null&&fol!==null){
+      const dv=(lut-fol).toFixed(1);
+      bits.push(dv>0.5
+        ? `黃體期粉刺分數平均比濾泡期高 <b>${dv} 分</b> — 週期性爆痘的模式成立，把魚腥草提早到排卵期開喝值得試。`
+        : `黃體期與濾泡期的粉刺分數差距不大（${dv} 分），你的爆痘可能更受作息或飲食影響，多看備註欄找線索。`);
+    }
+  }
+  const tea3=rows.filter(r=>(r.teas||[]).length>=3&&r.oil), tea0=rows.filter(r=>(r.teas||[]).length<=1&&r.oil);
+  if(tea3.length>=3&&tea0.length>=3){
+    const a=avg(tea3.map(r=>r.oil)),b=avg(tea0.map(r=>r.oil));
+    bits.push(`喝滿 3 杯以上的日子，出油平均 <b>${a.toFixed(1)}</b>；只喝 0–1 杯的日子平均 <b>${b.toFixed(1)}</b>。`);
+  }
+  const pm=rows.filter(r=>r.pm);
+  if(pm.length>=5){
+    const p=avg(pm.map(r=>r.pm));
+    bits.push(`近期下午精神平均 <b>${p.toFixed(1)}／5</b>。${p<3?"偏低——先檢查午餐澱粉量與睡眠，茶只能幫一半。":"維持得不錯。"}`);
+  }
+  box.innerHTML = bits.length
+    ? `<div class="insight">${bits.join("<br><br>")}<br><br><span style="opacity:.7;font-size:12px">這只是你自己資料的簡單平均，不是因果證據。累積兩三個週期後看趨勢比看單天有意義。</span></div>`
+    : `<div class="note-card">再記幾天，這裡就會開始比較不同週期階段的膚況與精神差異。</div>`;
+}
+document.getElementById("exportBtn").addEventListener("click",()=>{
+  const all=ST.get("teaLog",{});
+  const keys=Object.keys(all).sort();
+  if(!keys.length){alert("目前沒有記錄。");return}
+  const txt="日期,週期日,階段,出油,粉刺,下午精神,茶杯數,補充品數,備註\n"+keys.map(k=>{
+    const r=all[k];
+    return [k,r.day||"",PHASES[r.phase]?.name||"",r.oil||"",r.acne||"",r.pm||"",(r.teas||[]).length,(r.sups||[]).length,(r.note||"").replace(/,/g,"、")].join(",");
+  }).join("\n");
+  if(navigator.share){navigator.share({title:"週期茶曆記錄",text:txt}).catch(()=>{})}
+  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>alert("記錄已複製到剪貼簿"))}
+  else alert(txt);
+});
+
+/* ============ 提醒 ============ */
+function renderRemind(){
+  const info=calcPhase(ST.get("teaCycle",null));
+  const el=document.getElementById("remList");
+  if(!info){el.innerHTML=`<div class="empty">先完成週期設定，這裡才知道今天該提醒什麼。</div>`;return}
+  const P=PHASES[info.phase];
+  const rows=[
+    ...P.slots.map(s=>({at:s.at,name:s.tea,sub:`${s.time}・${s.why}`,sup:false})),
+    ...(P.sup||[]).map(s=>({at:supTime(s.at),name:s.name,sub:`${s.at}・${s.dose}`,sup:true}))
+  ].sort((a,b)=>a.at.localeCompare(b.at));
+  el.innerHTML=rows.map(r=>`<div class="rem-row">
+    <div class="rem-time" ${r.sup?'style="color:var(--gold)"':''}>${r.at}</div>
+    <div class="rem-txt">${r.sup?"💊 ":""}${r.name}<small>${r.sub}</small></div>
+  </div>`).join("");
+}
+function supTime(label){
+  return {"早餐":"08:00","午餐":"12:30","晚餐":"18:30","睡前":"22:30"}[label]||"08:00";
+}
+document.getElementById("copyRem").addEventListener("click",()=>{
+  const info=calcPhase(ST.get("teaCycle",null));
+  const m=document.getElementById("copyMsg");
+  if(!info){m.textContent="請先完成週期設定";return}
+  const P=PHASES[info.phase];
+  const rows=[
+    ...P.slots.map(s=>({at:s.at,t:`${s.tea}（${s.time}）`})),
+    ...(P.sup||[]).map(s=>({at:supTime(s.at),t:`💊 ${s.name}・${s.dose}`}))
+  ].sort((a,b)=>a.at.localeCompare(b.at));
+  const txt=`【${P.name}・第${info.day}天】\n`+rows.map(r=>`${r.at}　${r.t}`).join("\n");
+  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>{m.textContent="已複製 ✓";setTimeout(()=>m.textContent="",2000)})}
+  else{alert(txt)}
+});
+
+/* ============ 四期 / 茶飲 ============ */
+function phaseDaysLabel(key){
+  const s=ST.get("teaCycle",null),info=calcPhase(s);
+  const L=info?info.L:(s?.cycleLen||28),P=info?info.P:(s?.periodLen||5),ovu=L-14;
+  if(key==="menstrual")return `第 1–${P} 天`;
+  if(key==="follicular")return `第 ${P+1}–${ovu-2} 天`;
+  if(key==="ovulation")return `第 ${ovu-1}–${ovu+1} 天`;
+  return `第 ${ovu+2}–${L} 天`;
+}
+function renderPhases(){
+  document.getElementById("phaseCards").innerHTML=Object.values(PHASES).map(P=>`
+    <div class="card phase-card" style="border-left-color:${P.color}">
+      <h3 style="color:${P.color}">${P.name}<span class="days">${phaseDaysLabel(P.key)}</span></h3>
+      <div class="theme">${P.theme}</div>
+      <ul>${P.slots.map(s=>`<li><b>${s.at}</b><span>${s.tea}｜${s.why}</span></li>`).join("")}</ul>
+      ${P.avoid?`<div class="avoid" style="margin-top:8px">${P.avoid}</div>`:""}
+    </div>`).join("");
+}
+function renderTeas(){
+  document.getElementById("teaList").innerHTML=Object.values(TEAS).map(t=>`
+    <details class="tea"><summary>
+      <div><div class="t-name">${t.name}</div><div class="t-tag">${t.tag} · ${t.nature}</div></div>
+    </summary>
+    <div class="tea-body">
+      <div class="row"><b>擅長</b>${t.good}</div>
+      <div class="row"><b>主要成分</b>${t.nutrients}</div>
+      <div class="row"><b>飲用時機</b>${t.timing}</div>
+      <div class="row caution"><b>注意</b>${t.caution}</div>
+    </div></details>`).join("");
+
+  document.getElementById("supList").innerHTML=Object.values(SUPS).map(t=>`
+    <details class="tea sup"><summary>
+      <div><div class="t-name">${t.name}</div><div class="t-tag">${t.tag} · ${t.dose}</div></div>
+    </summary>
+    <div class="tea-body">
+      <div class="row"><b>擅長</b>${t.good}</div>
+      <div class="row"><b>形式與劑量</b>${t.nutrients}</div>
+      <div class="row"><b>服用時機</b>${t.timing}</div>
+      <div class="row caution"><b>注意</b>${t.caution}</div>
+    </div></details>`).join("");
+}
+
+/* ============ 設定 ============ */
+function initSettings(){
+  const cl=document.getElementById("cycleLen"),pl=document.getElementById("periodLen"),ct=document.getElementById("city");
+  for(let i=21;i<=40;i++) cl.innerHTML+=`<option value="${i}">${i} 天</option>`;
+  for(let i=2;i<=8;i++) pl.innerHTML+=`<option value="${i}">${i} 天</option>`;
+  ct.innerHTML=CITIES.map(c=>`<option value="${c.n}">${c.n}</option>`).join("");
+  const s=ST.get("teaCycle",null);
+  cl.value=s?.cycleLen||28; pl.value=s?.periodLen||5; ct.value=s?.city||"台北";
+  if(s?.lastPeriod) document.getElementById("lastPeriod").value=s.lastPeriod;
+  document.getElementById("saveBtn").addEventListener("click",()=>{
+    const lp=document.getElementById("lastPeriod").value;
+    const m=document.getElementById("savedMsg");
+    if(!lp){m.textContent="請先選擇上次經期開始日";return}
+    ST.set("teaCycle",{lastPeriod:lp,cycleLen:+cl.value,periodLen:+pl.value,city:ct.value});
+    m.textContent="已儲存 ✓";
+    renderToday();renderPhases();renderRemind();renderHistory();loadWeather();
+    setTimeout(()=>m.textContent="",2000);
+  });
+}
+
+/* ============ 導覽 ============ */
+document.querySelectorAll("nav button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+    document.getElementById("page-"+btn.dataset.page).classList.add("active");
+    if(btn.dataset.page==="log"){loadTodayLog();renderHistory()}
+    if(btn.dataset.page==="remind"){renderRemind();updateNotifUI()}
+    window.scrollTo({top:0});
+  });
+});
+
+/* ============ PWA:Service Worker ============ */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  });
+}
+
+/* ============ 通知（層一:茶曆開著時） ============ */
+const fired = new Set();   // 今天已發過的，避免重複跳
+
+function notifSupported(){ return "Notification" in window }
+function updateNotifUI(){
+  const st=document.getElementById("notifState"), btn=document.getElementById("notifBtn");
+  if(!notifSupported()){
+    st.textContent="這個瀏覽器不支援通知。請確認你是從主畫面圖示開啟茶曆，而不是在 Safari 分頁裡。";
+    btn.style.display="none"; return;
+  }
+  if(Notification.permission==="granted"){
+    st.innerHTML="通知已開啟 ✓　只要茶曆還在背景沒被滑掉，到點就會跳。<br><span style='opacity:.75'>要「關掉也會響」，請往下看層二。</span>";
+    btn.textContent="發一則測試通知"; btn.onclick=testNotif;
+  }else if(Notification.permission==="denied"){
+    st.textContent="通知被拒絕了。請到 iPhone 設定 → 通知 → 週期茶曆，手動打開。";
+    btn.style.display="none";
+  }else{
+    st.textContent="開啟後，只要茶曆還在背景沒被關掉，時間到就會跳通知。適合上班時放著不管的日子。";
+    btn.textContent="開啟通知"; btn.onclick=askNotif;
+  }
+}
+async function askNotif(){
+  const m=document.getElementById("notifMsg");
+  try{
+    const p=await Notification.requestPermission();
+    m.textContent = p==="granted" ? "已開啟 ✓" : "未開啟";
+    updateNotifUI(); scheduleToday();
+  }catch(e){ m.textContent="這個環境不允許通知"; }
+  setTimeout(()=>m.textContent="",2500);
+}
+function testNotif(){
+  showNotif("週期茶曆","通知正常運作 ✓ 到點會像這樣提醒你。");
+  const m=document.getElementById("notifMsg");
+  m.textContent="已送出"; setTimeout(()=>m.textContent="",2000);
+}
+async function showNotif(title,body){
+  if(!notifSupported()||Notification.permission!=="granted") return;
+  try{
+    const reg=await navigator.serviceWorker.getRegistration();
+    if(reg&&reg.showNotification) reg.showNotification(title,{body,icon:"./icon-192.png",badge:"./icon-192.png",tag:"chalendar"});
+    else new Notification(title,{body,icon:"./icon-192.png"});
+  }catch(e){ try{ new Notification(title,{body}) }catch(_){} }
+}
+
+/* 每分鐘檢查一次是否到了茶單／補充品的時刻 */
+function scheduleToday(){
+  if(!notifSupported()||Notification.permission!=="granted") return;
+  const info=calcPhase(ST.get("teaCycle",null));
+  if(!info) return;
+  const P=PHASES[info.phase];
+  const items=[
+    ...P.slots.map(s=>({at:s.at,id:s.id,title:s.tea,body:`${s.time}・${s.why}`})),
+    ...(P.sup||[]).map(s=>({at:supTime(s.at),id:s.id,title:`💊 ${s.name}`,body:`${s.at}・${s.dose}`}))
+  ];
+  const now=new Date();
+  const hhmm=`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+  const done=(ST.get("teaLog",{})[todayKey()]||{});
+  const already=[...(done.teas||[]),...(done.sups||[])];
+  items.forEach(it=>{
+    const key=todayKey()+it.id;
+    if(it.at===hhmm && !fired.has(key) && !already.includes(it.id)){
+      fired.add(key);
+      showNotif(it.title,it.body);
+    }
+  });
+}
+setInterval(scheduleToday,60000);
+
+/* ============ 啟動 ============ */
+const now=new Date();
+document.getElementById("todayDate").textContent=
+  `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,"0")}.${String(now.getDate()).padStart(2,"0")}`;
+initSettings(); buildScales(); renderToday(); renderPhases(); renderTeas();
+renderRemind(); loadTodayLog(); renderHistory(); loadWeather();
+updateNotifUI(); scheduleToday();
+</script>
+</body>
+</html>

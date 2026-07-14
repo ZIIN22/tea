@@ -1,0 +1,19 @@
+{
+  "name": "週期茶曆",
+  "short_name": "茶曆",
+  "description": "依經期、濾泡、排卵、黃體期安排茶飲與補充品，輔助血糖、控油與粉刺管理。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F3EB",
+  "theme_color": "#F5F3EB",
+  "lang": "zh-Hant",
+  "dir": "ltr",
+  "categories": ["health", "lifestyle"],
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
