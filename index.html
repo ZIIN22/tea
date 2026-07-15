@@ -56,7 +56,8 @@ main{padding:8px 16px 24px;max-width:540px;margin:0 auto}
 .ring-box svg{width:100%;height:100%;display:block}
 .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
 .ring-center .phase-name{font-family:"Songti TC",serif;font-size:27px;font-weight:700;letter-spacing:.14em}
-.ring-center .cycle-day{font-size:13px;color:var(--ink-soft);margin-top:2px}
+.ring-center .cycle-day{font-size:12.5px;color:var(--ink-soft);margin-top:3px;line-height:1.5;max-width:150px}
+.ring-center .next-switch{font-size:11.5px;color:var(--moss)}
 .legend{display:flex;gap:13px;margin-top:12px;flex-wrap:wrap;justify-content:center}
 .legend span{font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:5px}
 .legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
@@ -80,6 +81,14 @@ main{padding:8px 16px 24px;max-width:540px;margin:0 auto}
 .slot-why{font-size:13px;color:var(--ink-soft);margin-top:3px}
 .sup-card{background:linear-gradient(90deg,var(--gold-soft) 0 3px,var(--card) 3px)}
 .sup-card .tick.on{background:var(--gold);border-color:var(--gold)}
+.dose-label{font-size:11px;color:var(--ink-soft);margin:6px 0 4px}
+.dose-opts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.dose-opt{font-size:12px;padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);cursor:pointer;font-family:inherit}
+.dose-opt.on{background:var(--gold);border-color:var(--gold);color:#fff;font-weight:600}
+.flex-taken-inner{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+.flex-chip{font-size:12px;background:var(--gold-soft);color:#8a6620;padding:3px 9px;border-radius:99px}
+.flex-chip b{cursor:pointer;margin-left:3px;font-weight:700}
+.flex-add{font-size:12px;padding:5px 11px;border-radius:99px;border:1px dashed var(--gold);background:transparent;color:#8a6620;cursor:pointer;font-family:inherit}
 details.tea.sup{background:linear-gradient(90deg,var(--gold-soft) 0 3px,var(--card) 3px)}
 details.tea.sup .tea-body .row b{color:var(--gold)}
 details.tea.sup .tea-body .caution b{color:var(--roselle)}
@@ -385,9 +394,9 @@ nav button.on{color:var(--deep);background:var(--moss-soft);font-weight:600}
     <div class="note-card" style="margin-bottom:12px">這裡是你實際服用的品項與劑量，今日頁與提醒都以這份清單為準。圖鑑裡的一般建議量保留作對照。</div>
     <div id="mySupList"></div>
     <div class="field" style="margin-top:12px"><label>名稱</label><input type="text" id="nsName" placeholder="例：維生素D3"></div>
-    <div class="field"><label>劑量（自由填寫）</label><input type="text" id="nsDose" placeholder="例：1 顆＝1000IU"></div>
+    <div class="field"><label>劑量選項（多個用逗號隔開，第一個為預設）</label><input type="text" id="nsDose" placeholder="例：1000IU,2000IU"></div>
     <div class="field"><label>服用時間</label><select id="nsTime">
-      <option>早餐後</option><option>午餐後</option><option>晚餐後</option><option>睡前</option>
+      <option>早餐後</option><option>午餐後</option><option>晚餐後</option><option>睡前</option><option>彈性</option>
     </select></div>
     <button class="ghost" id="nsAdd">＋ 加入補充品</button>
     <button class="ghost" id="nsReset" style="color:var(--roselle)">還原成預設清單</button>
@@ -482,21 +491,31 @@ const TEAS = {
 
 /* ============ 我的補充品（可在設定頁編輯；預設為使用者實際產品、保守起步劑量） ============ */
 const DEFAULT_MYSUPS=[
-  {id:"u_zinc",  name:"小林亞鉛（酵母鋅）", dose:"1 顆＝鋅 8mg", time:"晚餐後",
-   note:"保守起步剛好：8mg 低於一般建議 15–30mg，先穩一個月再考慮加第二顆。與茶間隔 2 小時。"},
-  {id:"u_asta",  name:"蝦紅素複方（葉黃素15＋玉米黃素3＋蝦紅素4mg＋花青素12＋維A 244µg）", dose:"1 顆", time:"早餐後",
+  {id:"u_zinc",  name:"鋅（小林亞鉛 8mg／顆）", time:"彈性",
+   doseOptions:["8mg（1顆）","16mg（2顆，分開吃）","改吃 DHC 亞鉛（鋅15＋硒50＋鉻60）"], doseDefault:0,
+   note:"平時 8mg。手搖茶干擾或黃體爆痘期可加倍成 16mg，兩顆分不同時間吃、不必固定。與茶間隔 2 小時。"},
+  {id:"u_asta",  name:"蝦紅素複方（葉黃15＋玉米黃3＋蝦紅4mg＋花青12＋維A 244µg）", time:"早餐後",
+   doseOptions:["1 顆"], doseDefault:0,
    note:"隨油脂餐。⚠ 內含維生素A — 有口服A酸史，不要再疊其他含維A產品。葉黃素對高度近視是加分。"},
-  {id:"u_fish",  name:"魚油 700mg（DHA 54.4%＋EPA 35.3%）", dose:"1 顆＝Omega-3 約 628mg", time:"早餐後",
-   note:"從 1 顆起步（一般建議量的下緣）。經量多的日子減半或暫停。"},
-  {id:"u_mg",    name:"Doctor's Best 螯合鎂", dose:"1 顆＝鎂 100mg", time:"睡前",
-   note:"100mg 是溫和起步。大量流汗會流失鎂，夏天可視情況加到 2 顆；血壓偏低者不必急著加。"},
-  {id:"u_prob",  name:"益生菌", dose:"1 份（依產品標示）", time:"睡前",
+  {id:"u_fish",  name:"魚油 700mg（DHA 54.4%＋EPA 35.3%）", time:"早餐後",
+   doseOptions:["1 顆（Omega-3 約 628mg）","2 顆（約 1256mg）"], doseDefault:0,
+   note:"平時 1 顆。黃體期發炎痘多可加到 2 顆；經量多的日子減半或暫停。"},
+  {id:"u_mg",    name:"螯合鎂（Doctor's Best 100mg／顆）", time:"睡前",
+   doseOptions:["1 顆（100mg）","2 顆（200mg）"], doseDefault:0,
+   note:"平時 1 顆。大量流汗、黃體期睡不好可加到 2 顆；血壓偏低不必急著加。"},
+  {id:"u_prob",  name:"益生菌", time:"睡前",
+   doseOptions:["1 份"], doseDefault:0,
    note:"配常溫水，與熱茶間隔 30 分鐘。"}
 ];
-function getMySups(){ const v=ST.get("mySups",null); return v&&v.length? v : DEFAULT_MYSUPS.map(x=>({...x})); }
+function getMySups(){
+  const v=ST.get("mySups",null);
+  const list=(v&&v.length)? v : DEFAULT_MYSUPS.map(x=>({...x}));
+  // 舊資料相容：沒有 doseOptions 的補上
+  return list.map(s=>({doseOptions:s.doseOptions||[s.dose||"1 份"], doseDefault:s.doseDefault||0, ...s, doseOptions:s.doseOptions||[s.dose||"1 份"]}));
+}
 function getMyTeas(){ return ST.get("myTeas",[]); }
 
-const SUPTIME_MAP={"早餐後":"09:45","午餐後":"13:00","晚餐後":"19:00","睡前":"22:30"};
+const SUPTIME_MAP={"早餐後":"09:45","午餐後":"13:00","晚餐後":"19:00","睡前":"22:30","彈性":""};
 
 /* ============ 補充品資料 ============ */
 const SUPS = {
@@ -714,7 +733,7 @@ function renderToday(){
   const P=PHASES[info.phase];
   pn.textContent=P.name;pn.style.color=P.color;
   const ns=nextPhaseSwitch();
-  cd.textContent=`第 ${info.day} 天／共 ${info.L} 天` + (ns? `　·　${ns.date} 進入${PHASES[ns.phase].name}`:"");
+  cd.innerHTML=`第 ${info.day} 天 / 共 ${info.L} 天` + (ns? `<br><span class="next-switch">${ns.date} 進入${PHASES[ns.phase].name}</span>`:"");
   const log=ST.get("teaLog",{})[todayKey()]||{};
   const doneT=log.teas||[], doneS=log.sups||[];
 
@@ -747,15 +766,45 @@ function renderToday(){
   }
 
   // 我的補充品（依設定頁的個人清單，含個人劑量與時間）
-  document.getElementById("todaySups").innerHTML=getMySups().map(s2=>`
+  const todayLog=ST.get("teaLog",{})[todayKey()]||{};
+  const supDose=todayLog.supDose||{};
+  document.getElementById("todaySups").innerHTML=getMySups().map(s2=>{
+    const flexible=(s2.time==="彈性");
+    const multiDose=s2.doseOptions.length>1;
+    const chosen=supDose[s2.id]!=null?supDose[s2.id]:s2.doseDefault;
+    const doseSelector = multiDose
+      ? `<div class="dose-opts" data-sup="${s2.id}">${s2.doseOptions.map((o,i)=>`<button class="dose-opt ${i===chosen?"on":""}" data-i="${i}">${o}</button>`).join("")}</div>`
+      : `<small>${s2.doseOptions[0]}</small>`;
+    return `
     <div class="card sup-card"><div class="slot">
       <div class="tick ${doneS.includes(s2.id)?"on":""}" data-k="sups" data-id="${s2.id}" role="checkbox" aria-checked="${doneS.includes(s2.id)}" tabindex="0">✓</div>
-      <div class="slot-time">${SUPTIME_MAP[s2.time]||""}<br>${s2.time}</div>
+      <div class="slot-time">${flexible?'<span style="color:var(--gold)">彈性<br>時間</span>':(SUPTIME_MAP[s2.time]||"")+"<br>"+s2.time}</div>
       <div class="slot-body">
-        <div class="slot-tea">${s2.name}<small>${s2.dose}</small></div>
+        <div class="slot-tea">${s2.name}</div>
+        ${multiDose?`<div class="dose-label">今天的劑量：</div>`:""}
+        ${doseSelector}
         <div class="slot-why">${s2.note||""}</div>
+        ${flexible?`<div class="flex-taken" data-sup="${s2.id}">${renderFlexTaken(s2.id)}</div>`:""}
       </div>
-    </div></div>`).join("");
+    </div></div>`;
+  }).join("");
+
+  // 劑量選擇器事件
+  document.querySelectorAll(".dose-opts").forEach(box=>{
+    box.querySelectorAll(".dose-opt").forEach(b=>b.addEventListener("click",()=>{
+      const all=ST.get("teaLog",{}),k=todayKey(); const d=all[k]||{};
+      d.supDose=d.supDose||{}; d.supDose[box.dataset.sup]=+b.dataset.i;
+      const info2=calcPhase(ST.get("teaCycle",null)); if(info2){d.phase=info2.phase;d.day=info2.day}
+      all[k]=d; ST.set("teaLog",all);
+      box.querySelectorAll(".dose-opt").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+    }));
+  });
+  // 彈性補充品:記錄每次服用時間
+  document.querySelectorAll(".flex-taken").forEach(box=>{
+    box.querySelectorAll("[data-add-time]").forEach(b=>b.addEventListener("click",()=>addFlexTime(box.dataset.sup)));
+    box.querySelectorAll("[data-del-time]").forEach(b=>b.addEventListener("click",()=>delFlexTime(box.dataset.sup,+b.dataset.delTime)));
+  });
 
   note.textContent=P.note;
   document.querySelectorAll("#todaySlots .tick, #todaySups .tick").forEach(t=>{
@@ -764,6 +813,30 @@ function renderToday(){
     t.addEventListener("keydown",e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();fire()}});
   });
 }
+/* 彈性補充品:記錄每次實際服用的時間點（不必固定） */
+function renderFlexTaken(supId){
+  const d=ST.get("teaLog",{})[todayKey()]||{};
+  const times=(d.supTimes&&d.supTimes[supId])||[];
+  const chips=times.map((t,i)=>`<span class="flex-chip">${t} <b data-del-time="${i}">×</b></span>`).join("");
+  return `<div class="flex-taken-inner">${chips}<button class="flex-add" data-add-time>＋ 記一次服用</button></div>`;
+}
+function addFlexTime(supId){
+  const all=ST.get("teaLog",{}),k=todayKey(); const d=all[k]||{};
+  d.supTimes=d.supTimes||{}; d.supTimes[supId]=d.supTimes[supId]||[];
+  const now=new Date();
+  d.supTimes[supId].push(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`);
+  d.sups=d.sups||[]; if(!d.sups.includes(supId)) d.sups.push(supId);  // 記過就算有吃
+  const info=calcPhase(ST.get("teaCycle",null)); if(info){d.phase=info.phase;d.day=info.day}
+  all[k]=d; ST.set("teaLog",all);
+  renderToday(); renderHistory();
+}
+function delFlexTime(supId,idx){
+  const all=ST.get("teaLog",{}),k=todayKey(); const d=all[k]||{};
+  if(d.supTimes&&d.supTimes[supId]){ d.supTimes[supId].splice(idx,1); }
+  all[k]=d; ST.set("teaLog",all);
+  renderToday();
+}
+
 function toggleItem(key,id,el){
   const all=ST.get("teaLog",{}), k=todayKey();
   const d=all[k]||{};
@@ -991,7 +1064,7 @@ function buildCSV(){
   if(!keys.length) return null;
   // 每個欄位都用引號包起來，備註裡的逗號、換行才不會把欄位撐爆
   const q=v=>`"${String(v??"").replace(/"/g,'""').replace(/\r?\n/g," ")}"`;
-  const head=["日期","週期日","階段","出油早","出油午後","出油晚","粉刺早","粉刺午後","粉刺晚","午後爆發幅度","咖啡因杯數","下午精神","誘因","運動","保養品","茶杯數","補充品數","備註"];
+  const head=["日期","週期日","階段","出油早","出油午後","出油晚","粉刺早","粉刺午後","粉刺晚","午後爆發幅度","咖啡因杯數","下午精神","誘因","運動","保養品","茶杯數","鋅劑量","鋅服用時間","補充品數","備註"];
   const lines=keys.map(k=>{
     const r=all[k];
     const oAM=r.oilAM??"", oMID=r.oilMID??"", oPM=r.oilPM??r.oil??"";
@@ -1000,7 +1073,11 @@ function buildCSV(){
     const caf=caffeineCups(r);
     const trig=(r.trig||[]).map(t=>(TRIGGERS.find(x=>x[0]===t)||[,t])[1]).join("、");
     const ex=(r.ex||[]).map(t=>(EXERCISES.find(x=>x[0]===t)||[,t])[1]).join("、");
-    return [k,r.day||"",PHASES[r.phase]?.name||"",oAM,oMID,oPM,aAM,aMID,aPM,spOut,caf,r.pm||"",trig,ex,r.skin||"",(r.teas||[]).length,(r.sups||[]).length,r.note||""].map(q).join(",");
+    // 鋅劑量與彈性服用時間（你最想追蹤的變因）
+    const zincDoseIdx=(r.supDose&&r.supDose.u_zinc!=null)?r.supDose.u_zinc:0;
+    const zincDose=["8mg","16mg","DHC(鋅15+硒50+鉻60)"][zincDoseIdx]||"";
+    const zincTimes=(r.supTimes&&r.supTimes.u_zinc||[]).join(" ");
+    return [k,r.day||"",PHASES[r.phase]?.name||"",oAM,oMID,oPM,aAM,aMID,aPM,spOut,caf,r.pm||"",trig,ex,r.skin||"",(r.teas||[]).length,zincDose,zincTimes,(r.sups||[]).length,r.note||""].map(q).join(",");
   });
   // \uFEFF = BOM，沒有它 Excel 開中文會變亂碼
   return "\uFEFF" + [head.map(q).join(","), ...lines].join("\r\n");
@@ -1046,7 +1123,7 @@ function renderRemind(){
   const P=PHASES[info.phase];
   const rows=[
     ...P.slots.map(s=>({at:s.at,name:s.tea,sub:`${s.time}・${s.why}`,sup:false})),
-    ...getMySups().map(s=>({at:SUPTIME_MAP[s.time]||"09:45",name:s.name,sub:`${s.time}・${s.dose}`,sup:true}))
+    ...getMySups().filter(s=>s.time!=="彈性").map(s=>({at:SUPTIME_MAP[s.time]||"09:45",name:s.name,sub:`${s.time}・${s.doseOptions[0]}`,sup:true}))
   ].sort((a,b)=>a.at.localeCompare(b.at));
   el.innerHTML=rows.map(r=>`<div class="rem-row">
     <div class="rem-time" ${r.sup?'style="color:var(--gold)"':''}>${r.at}</div>
@@ -1063,7 +1140,7 @@ document.getElementById("copyRem").addEventListener("click",()=>{
   const P=PHASES[info.phase];
   const rows=[
     ...P.slots.map(s=>({at:s.at,t:`${s.tea}（${s.time}）`})),
-    ...getMySups().map(s=>({at:SUPTIME_MAP[s.time]||"09:45",t:`💊 ${s.name}・${s.dose}`}))
+    ...getMySups().filter(s=>s.time!=="彈性").map(s=>({at:SUPTIME_MAP[s.time]||"09:45",t:`💊 ${s.name}・${s.doseOptions[0]}`}))
   ].sort((a,b)=>a.at.localeCompare(b.at));
   const ns=nextPhaseSwitch();
   const txt=`【${P.name}・第${info.day}天】`+(ns?`（${ns.date} 進入${PHASES[ns.phase].name}）`:"")+`\n`+rows.map(r=>`${r.at}　${r.t}`).join("\n");
@@ -1211,7 +1288,7 @@ function scheduleToday(){
   const P=PHASES[info.phase];
   const items=[
     ...P.slots.map(s=>({at:s.at,id:s.id,title:s.tea,body:`${s.time}・${s.why}`})),
-    ...getMySups().map(s=>({at:SUPTIME_MAP[s.time]||"09:45",id:s.id,title:`💊 ${s.name}`,body:`${s.time}・${s.dose}`})),
+    ...getMySups().filter(s=>s.time!=="彈性").map(s=>({at:SUPTIME_MAP[s.time]||"09:45",id:s.id,title:`💊 ${s.name}`,body:`${s.time}・${s.doseOptions[0]}`})),
     ...getMyTeas().map(t=>({at:"10:30",id:t.id,title:t.name,body:t.note||"自訂茶飲"}))
   ];
   const now=new Date();
@@ -1242,7 +1319,7 @@ function renderMyLists(){
 
   const sups=getMySups();
   document.getElementById("mySupList").innerHTML = sups.map(s=>`
-    <div class="rem-row"><div class="rem-txt">${s.name}<small>${s.dose}・${s.time}</small></div>
+    <div class="rem-row"><div class="rem-txt">${s.name}<small>${(s.doseOptions||[]).join(" / ")}・${s.time}</small></div>
       <button class="ghost" style="width:auto;padding:6px 12px;margin:0" data-del-sup="${s.id}">刪除</button></div>`).join("");
   document.querySelectorAll("[data-del-sup]").forEach(b=>b.addEventListener("click",()=>{
     ST.set("mySups",getMySups().filter(s=>s.id!==b.dataset.delSup));
@@ -1260,7 +1337,8 @@ document.getElementById("ntAdd").addEventListener("click",()=>{
 document.getElementById("nsAdd").addEventListener("click",()=>{
   const name=document.getElementById("nsName").value.trim();
   if(!name) return;
-  const s={id:"us"+Date.now(), name, dose:document.getElementById("nsDose").value.trim()||"1 份", time:document.getElementById("nsTime").value};
+  const opts=document.getElementById("nsDose").value.split(/[,，]/).map(x=>x.trim()).filter(Boolean);
+  const s={id:"us"+Date.now(), name, doseOptions:opts.length?opts:["1 份"], doseDefault:0, time:document.getElementById("nsTime").value};
   ST.set("mySups",[...getMySups(),s]);
   document.getElementById("nsName").value="";document.getElementById("nsDose").value="";
   renderMyLists(); renderToday(); renderRemind();
