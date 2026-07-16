@@ -115,6 +115,8 @@ details.tea.sup .tea-body .caution b{color:var(--roselle)}
 .trig{font-size:13px;padding:7px 13px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);cursor:pointer;font-family:inherit}
 .trig.on{background:var(--roselle);border-color:var(--roselle);color:#fff;font-weight:600}
 .trig.ex.on{background:var(--moss);border-color:var(--moss)}
+.scale.sig button{padding:7px 0;font-size:13px}
+.scale.sig button.on{background:var(--sky);border-color:var(--sky);color:#fff;font-weight:600}
 .tri-row{display:flex;align-items:center;gap:8px;margin-top:6px}
 .tri-lab{flex:0 0 34px;font-size:12px;color:var(--ink-soft);text-align:right}
 .tri-lab.hot{color:var(--roselle);font-weight:700}
@@ -278,6 +280,15 @@ nav button.on{color:var(--deep);background:var(--moss-soft);font-weight:600}
 
     <div class="log-label"><b>今天的運動</b>　可複選</div>
     <div class="triggers" id="exList"></div>
+
+    <div class="log-label"><b>身體訊號</b>　0 無感 · 1 輕微 · 2 明顯 · 3 強烈</div>
+    <div class="tri-row"><div class="tri-lab" style="flex:0 0 88px">耳垢/油氧化味</div><div class="scale sig" id="sc-oxid"></div></div>
+    <div class="tri-row"><div class="tri-lab" style="flex:0 0 88px">油的濃稠度</div><div class="scale sig" id="sc-thick"></div></div>
+    <div class="tri-row"><div class="tri-lab" style="flex:0 0 88px">晨起右眼乾澀</div><div class="scale sig" id="sc-eye"></div></div>
+    <div class="tri-row"><div class="tri-lab" style="flex:0 0 88px">左腋下脹感</div><div class="scale sig" id="sc-axilla"></div></div>
+    <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;line-height:1.5">
+      這四項你觀察到與雌激素下降／黃體期連動，記著看是否成立。<span style="color:var(--roselle)">腋下已做超音波排除結構問題；若日後變成持續硬塊或單側固定疼痛，請回診、別只記錄。</span>
+    </div>
 
     <div class="log-label"><b>臉部保養品</b>　今天用了什麼（換品項的日子特別要記）</div>
     <textarea id="skinNote" style="min-height:44px" placeholder="例：早 C 晚 A 停用中、只用溫和洗面乳＋清爽保濕"></textarea>
@@ -854,6 +865,7 @@ function toggleItem(key,id,el){
 /* ============ 記錄 ============ */
 const SCALES=[["sc-oilAM","oilAM"],["sc-oilMID","oilMID"],["sc-oilPM","oilPM"],
               ["sc-acneAM","acneAM"],["sc-acneMID","acneMID"],["sc-acnePM","acnePM"],["sc-pm","pm"]];
+const SIGNALS=[["sc-oxid","oxid"],["sc-thick","thick"],["sc-eye","eye"],["sc-axilla","axilla"]];
 const TRIGGERS=[["dairy","乳製品"],["sugar","高糖"],["caffx","計畫外咖啡因"],["sleep","睡不足"],["stress","壓力大"],["fried","炸物油膩"]];
 const EXERCISES=[["class","運動課"],["walk","走路"],["swim","游泳"]];
 
@@ -885,6 +897,14 @@ function buildScales(){
   const el=document.getElementById("exList");
   el.innerHTML=EXERCISES.map(([k,label])=>`<button class="trig ex" data-e="${k}">${label}</button>`).join("");
   el.querySelectorAll(".trig").forEach(b=>b.addEventListener("click",()=>b.classList.toggle("on")));
+  SIGNALS.forEach(([elId,key])=>{
+    const s=document.getElementById(elId);
+    s.innerHTML=[0,1,2,3].map(n=>`<button data-k="${key}" data-v="${n}">${n}</button>`).join("");
+    s.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+      s.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+    }));
+  });
 }
 function loadTodayLog(){
   const d=ST.get("teaLog",{})[todayKey()]||{};
@@ -897,6 +917,11 @@ function loadTodayLog(){
   document.querySelectorAll("#trigList .trig").forEach(b=>b.classList.toggle("on",trig.includes(b.dataset.t)));
   const ex=d.ex||[];
   document.querySelectorAll("#exList .trig").forEach(b=>b.classList.toggle("on",ex.includes(b.dataset.e)));
+  SIGNALS.forEach(([elId,key])=>{
+    document.querySelectorAll(`#${elId} button`).forEach(b=>{
+      b.classList.toggle("on", d[key]!=null && d[key]===+b.dataset.v);
+    });
+  });
   document.getElementById("skinNote").value=d.skin||"";
   document.getElementById("logNote").value=d.note||"";
 }
@@ -909,6 +934,10 @@ document.getElementById("logSave").addEventListener("click",()=>{
   });
   d.trig=[...document.querySelectorAll("#trigList .trig.on")].map(b=>b.dataset.t);
   d.ex=[...document.querySelectorAll("#exList .trig.on")].map(b=>b.dataset.e);
+  SIGNALS.forEach(([elId,key])=>{
+    const on=document.querySelector(`#${elId} button.on`);
+    if(on) d[key]=+on.dataset.v;
+  });
   d.skin=document.getElementById("skinNote").value.trim();
   d.note=document.getElementById("logNote").value.trim();
   const info=calcPhase(ST.get("teaCycle",null));
@@ -1048,6 +1077,20 @@ function renderInsight(rows){
     }
   }
 
+  // ⑦ 身體訊號 vs 黃體期（你假設它們跟雌激素下降/黃體期連動）
+  const sigDefs=[["oxid","耳垢/油氧化味"],["thick","油濃稠度"],["eye","晨起眼乾"],["axilla","腋下脹感"]];
+  sigDefs.forEach(([key,label])=>{
+    const has=rows.filter(r=>r[key]!=null);
+    if(has.length>=6){
+      const lut=avg(has.filter(r=>r.phase==="luteal").map(r=>r[key]));
+      const oth=avg(has.filter(r=>r.phase!=="luteal").map(r=>r[key]));
+      if(lut!==null&&oth!==null){
+        const dv=(lut-oth).toFixed(1);
+        if(lut>oth+0.4) bits.push(`🔸 <b>${label}</b>在黃體期平均 <b>${lut.toFixed(1)}</b>、其他期 <b>${oth.toFixed(1)}</b> — 你的「跟黃體期連動」假設成立（差 ${dv}）。`);
+      }
+    }
+  });
+
   // ⑥ 精神
   const pm=rows.filter(r=>r.pm);
   if(pm.length>=5){
@@ -1064,7 +1107,7 @@ function buildCSV(){
   if(!keys.length) return null;
   // 每個欄位都用引號包起來，備註裡的逗號、換行才不會把欄位撐爆
   const q=v=>`"${String(v??"").replace(/"/g,'""').replace(/\r?\n/g," ")}"`;
-  const head=["日期","週期日","階段","出油早","出油午後","出油晚","粉刺早","粉刺午後","粉刺晚","午後爆發幅度","咖啡因杯數","下午精神","誘因","運動","保養品","茶杯數","鋅劑量","鋅服用時間","補充品數","備註"];
+  const head=["日期","週期日","階段","出油早","出油午後","出油晚","粉刺早","粉刺午後","粉刺晚","午後爆發幅度","咖啡因杯數","下午精神","誘因","運動","氧化味","油濃稠","晨起眼乾","腋下脹","保養品","茶杯數","鋅劑量","鋅服用時間","補充品數","備註"];
   const lines=keys.map(k=>{
     const r=all[k];
     const oAM=r.oilAM??"", oMID=r.oilMID??"", oPM=r.oilPM??r.oil??"";
@@ -1077,7 +1120,8 @@ function buildCSV(){
     const zincDoseIdx=(r.supDose&&r.supDose.u_zinc!=null)?r.supDose.u_zinc:0;
     const zincDose=["8mg","16mg","DHC(鋅15+硒50+鉻60)"][zincDoseIdx]||"";
     const zincTimes=(r.supTimes&&r.supTimes.u_zinc||[]).join(" ");
-    return [k,r.day||"",PHASES[r.phase]?.name||"",oAM,oMID,oPM,aAM,aMID,aPM,spOut,caf,r.pm||"",trig,ex,r.skin||"",(r.teas||[]).length,zincDose,zincTimes,(r.sups||[]).length,r.note||""].map(q).join(",");
+    const sig=k2=>r[k2]!=null?r[k2]:"";
+    return [k,r.day||"",PHASES[r.phase]?.name||"",oAM,oMID,oPM,aAM,aMID,aPM,spOut,caf,r.pm||"",trig,ex,sig("oxid"),sig("thick"),sig("eye"),sig("axilla"),r.skin||"",(r.teas||[]).length,zincDose,zincTimes,(r.sups||[]).length,r.note||""].map(q).join(",");
   });
   // \uFEFF = BOM，沒有它 Excel 開中文會變亂碼
   return "\uFEFF" + [head.map(q).join(","), ...lines].join("\r\n");
